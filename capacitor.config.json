@@ -1,0 +1,10 @@
+{
+  "appId": "com.jirka.denik",
+  "appName": "Elektronicky Denik",
+  "webDir": "src/main/resources/static",
+  "server": {
+    "url": "https://elektronicky-denik.onrender.com",
+    "cleartext": true,
+    "androidScheme": "https"
+  }
+}

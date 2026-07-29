@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrace společnosti</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+<div class="flex-grow flex items-center justify-center px-4 py-12">
+    <div class="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
+        <div class="flex justify-center mb-4">
+            <img th:src="@{/images/logo-provozni-denik.png}"
+                 alt="Elektronický provozní deník"
+                 class="w-auto h-24 object-contain">
+        </div>
+
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Registrace společnosti</h1>
+
+        <form action="/auth/registerCompany" method="post" class="space-y-5">
+            <div>
+                <label for="companyName" class="block text-sm font-medium text-gray-700 mb-1">Název společnosti *</label>
+                <input type="text" id="companyName" name="companyName" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="ico" class="block text-sm font-medium text-gray-700 mb-1">IČO *</label>
+                <input type="text" id="ico" name="ico" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Adresa sídla *</label>
+                <input type="text" id="address" name="address" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="dic" class="block text-sm font-medium text-gray-700 mb-1">DIČ</label>
+                <input type="text" id="dic" name="dic"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="key" class="block text-sm font-medium text-gray-700 mb-1">Klíč pro zaměstnance *</label>
+                <input type="text" id="key" name="key" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">Jméno kontaktní osoby *</label>
+                <input type="text" id="firstName" name="firstName" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1">Příjmení kontaktní osoby *</label>
+                <input type="text" id="lastName" name="lastName" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mailová adresa *</label>
+                <input type="email" id="email" name="email" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefonní číslo</label>
+                <input type="tel" id="phone" name="phone"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                <p class="text-xs text-gray-500 mt-1">Volitelné pole.</p>
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Heslo *</label>
+                <input type="password" id="password" name="password" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div>
+                <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Potvrzení hesla *</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+            </div>
+
+            <div class="flex items-start space-x-2">
+                <input type="checkbox" id="terms" name="terms" required
+                       class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                <label for="terms" class="text-sm text-gray-700">
+                    Souhlasím s <a href="#" class="text-blue-600 hover:text-blue-800 underline">obchodními podmínkami</a>
+                </label>
+            </div>
+
+            <div class="flex items-start space-x-2">
+                <input type="checkbox" id="gdpr" name="gdpr" required
+                       class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+                <label for="gdpr" class="text-sm text-gray-700">
+                    Souhlasím se zpracováním osobních údajů dle <a href="#" class="text-blue-600 hover:text-blue-800 underline">GDPR</a>
+                </label>
+            </div>
+
+            <div>
+                <button type="submit"
+                        class="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
+                    Registrovat společnost
+                </button>
+            </div>
+
+            <div class="text-center">
+                <p class="text-gray-600">
+                    Již máte účet?
+                    <a href="/login" class="text-blue-600 hover:text-blue-800 font-medium underline">
+                        Přihlaste se
+                    </a>
+                </p>
+            </div>
+
+            <div th:if="${error}"
+                 class="mt-4 p-2 text-sm text-red-600 bg-red-100 border border-red-400 rounded-md animate-shake">
+                <span th:text="${error}"></span>
+            </div>
+        </form>
+
+        <div class="mt-7 text-center">
+            <a href="https://provoznidenik.com" target="_blank" class="text-base font-medium text-orange-500 hover:text-orange-600 transition">
+                provoznidenik.com
+            </a>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+<style>
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-8px); }
+        40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+        animation: shake 0.5s ease-in-out;
+    }
+</style>

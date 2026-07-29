@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Administrace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+<div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2" th:text="${companyName}">Jméno Firmy</h1>
+
+        <p class="text-gray-600" th:if="${user}">Přihlášen jako: <span th:text="${user.firstName + ' ' + user.lastName}"></span></p>
+    </div>
+
+    <div th:if="${successMessage}" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6 max-w-4xl mx-auto shadow-sm">
+        <strong class="font-bold">Úspěch:</strong>
+        <span class="block sm:inline" th:text="${successMessage}"></span>
+    </div>
+    <div th:if="${errorMessage}" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6 max-w-4xl mx-auto shadow-sm">
+        <strong class="font-bold">Chyba:</strong>
+        <span class="block sm:inline" th:text="${errorMessage}"></span>
+    </div>
+
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <a th:href="@{/admin/usersList}" class="block group">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-indigo-100 hover:border-indigo-300 h-full flex flex-col">
+                <div class="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-indigo-200 transition-colors">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 15c2.21 0 4.294.497 6.109 1.373M15 11a3 3 0 11-6 0 3 3 0 016 0zM19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Uživatelé</h3>
+                <p class="text-gray-600 text-sm mt-auto">Správa uživatelů a oprávnění</p>
+            </div>
+        </a>
+
+        <a th:href="@{/admin/machines}" class="block group">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-orange-100 hover:border-orange-300 h-full flex flex-col">
+                <div class="bg-orange-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-orange-200 transition-colors">
+                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Stroje</h3>
+                <p class="text-gray-600 text-sm mt-auto">Přehled a správa strojů</p>
+            </div>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto mb-8 mt-8 border border-gray-200">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="text-center md:text-left">
+                <h2 class="text-lg font-bold text-gray-800">Firemní klíč</h2>
+                <p class="text-gray-600 text-sm">Tento klíč používají zaměstnanci při registraci k propojení s firmou.</p>
+            </div>
+
+            <div class="flex flex-col items-center md:items-end gap-3 w-full md:w-auto">
+                <div class="bg-gray-100 px-4 py-2 rounded-lg border border-gray-300 font-mono text-xl font-bold tracking-wider text-blue-600 select-all"
+                     th:text="${companyKey}">
+                    KLIC123
+                </div>
+                <button onclick="document.getElementById('changeKeyForm').classList.toggle('hidden')"
+                        class="text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none">
+                    Změnit klíč
+                </button>
+            </div>
+        </div>
+
+        <div id="changeKeyForm" class="hidden mt-6 pt-4 border-t border-gray-200">
+            <form th:action="@{/admin/changeKey}" method="post" class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="w-full">
+                    <label for="newKey" class="block text-sm font-medium text-gray-700 mb-1">Nový klíč</label>
+                    <input type="text" id="newKey" name="newKey" required
+                           class="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                           placeholder="Zadejte nový unikátní klíč">
+                </div>
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition duration-200 whitespace-nowrap"
+                        onclick="return confirm('Pozor! Změna klíče aktualizuje všechny stávající uživatele. Noví uživatelé budou muset zadat tento nový klíč. Pokračovat?')">
+                    Uložit změnu
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+<footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+</body>
+</html>

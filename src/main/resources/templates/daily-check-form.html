@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Denní kontrola stroje</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+<div class="no-print">
+    <th:block th:if="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}">
+        <div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+    </th:block>
+
+    <th:block th:unless="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}">
+        <div th:replace="~{fragments/header :: mainHeader(title=${pageTitle})}"></div>
+    </th:block>
+</div>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+    <div class="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 relative">
+            <h1 class="text-2xl font-bold text-gray-800 text-center w-full md:absolute md:left-0 md:right-0 pointer-events-none">
+                Denní kontrola stroje
+            </h1>
+
+            <div class="hidden md:block"></div>
+
+            <a th:if="${canViewHistory}"
+               th:href="@{/daily-check(vehicleId=${vehicle.id})}"
+               class="relative pointer-events-auto mt-4 md:mt-0 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded shadow text-sm flex items-center gap-2 z-10 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Zobrazit historii
+            </a>
+        </div>
+
+        <form th:action="@{/daily-check}" th:object="${dailyCheckForm}" method="post" class="space-y-6">
+            <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Datum kontroly</label>
+                    <input type="date" th:field="*{checkDate}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-xs text-gray-500 mt-1">Automaticky dnešní datum, ale můžete ho změnit.</p>
+                    <p id="retroactive-note" class="hidden text-xs text-amber-700 mt-2 font-medium">
+                        Poznámka: zadáváte kontrolu zpětně.
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stroj</label>
+                    <p class="text-gray-800 font-semibold" th:text="${vehicle.displayName}"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Obsluha</label>
+                    <p class="text-gray-800 font-semibold" th:text="${user.firstName + ' ' + user.lastName}"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+                    <p class="text-gray-800 font-semibold" th:text="${vehicle.category.displayName}"></p>
+                </div>
+            </div>
+
+            <div th:if="${vehicle.category.name() == 'JERABY'}" class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-3">
+                <h2 class="text-xl font-semibold text-gray-800">Rozsah kontroly pro jeřáby</h2>
+                <ul class="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                    <li>Vizuální kontrola a stav konstrukce</li>
+                    <li>Lana, řetězy, háky, kladky</li>
+                    <li>Ovládání, stop tlačítko, signalizace</li>
+                    <li>Elektroinstalace, brzdy, chod naprázdno</li>
+                </ul>
+            </div>
+
+            <div th:if="${vehicle.category.name() == 'MOTOROVE_VYSOKOZDVIZNE_VOZIKY'}" class="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                <h2 class="text-xl font-semibold text-gray-800">Rozsah kontroly pro VZV</h2>
+                <ul class="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                    <li>Pneumatiky, vidlice, řízení, brzdy</li>
+                    <li>Osvětlení, signalizace, zvedací zařízení</li>
+                    <li>Provozní kapaliny, úniky</li>
+                </ul>
+            </div>
+
+            <div th:if="${vehicle.category.name() == 'STAVEBNI_STROJE'}" class="p-4 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
+                <h2 class="text-xl font-semibold text-gray-800">Rozsah kontroly pro stavební stroje</h2>
+                <ul class="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                    <li>Konstrukce, stav stroje, pneumatiky nebo pásy</li>
+                    <li>Kryty, kapaliny, funkce stroje</li>
+                    <li>Řízení, brzdy, pracovní zařízení</li>
+                </ul>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Výsledek kontroly</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Celkový výsledek</label>
+                    <div class="flex space-x-6">
+                        <label class="inline-flex items-center">
+                            <input type="radio" th:field="*{overallResult}" value="BEZ_ZAVAD" class="text-green-600 focus:ring-green-500" required>
+                            <span class="ml-2 text-green-700 font-medium">Bez závad</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" th:field="*{overallResult}" value="ZAVAD" class="text-red-600 focus:ring-red-500" required>
+                            <span class="ml-2 text-red-700 font-medium">Závada</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="defects-description-wrapper" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Popis závad</label>
+                    <textarea th:field="*{defectsDescription}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Pokud byly zjištěny závady, popište je zde..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between mt-6 gap-4">
+                <button type="submit"
+                        class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline text-center">
+                    Uložit kontrolu
+                </button>
+
+                <a th:href="@{/home(vehicleId=${vehicle.id})}"
+                   class="w-full md:w-auto inline-flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                    Zpět na stroj
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const defectsWrapper = document.getElementById('defects-description-wrapper');
+        const radioButtons = document.querySelectorAll('input[name="overallResult"]');
+        const checkDateInput = document.querySelector('input[name="checkDate"]');
+        const retroactiveNote = document.getElementById('retroactive-note');
+
+        function updateVisibility() {
+            const checkedRadio = document.querySelector('input[name="overallResult"]:checked');
+            if (checkedRadio && checkedRadio.value === 'ZAVAD') {
+                defectsWrapper.classList.remove('hidden');
+            } else {
+                defectsWrapper.classList.add('hidden');
+            }
+        }
+
+        function updateRetroactiveNote() {
+            if (!checkDateInput || !retroactiveNote || !checkDateInput.value) {
+                return;
+            }
+
+            const selectedDate = new Date(checkDateInput.value + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate < today) {
+                retroactiveNote.classList.remove('hidden');
+            } else {
+                retroactiveNote.classList.add('hidden');
+            }
+        }
+
+        radioButtons.forEach(function(radio) {
+            radio.addEventListener('change', updateVisibility);
+        });
+
+        if (checkDateInput) {
+            checkDateInput.addEventListener('change', updateRetroactiveNote);
+        }
+
+        updateVisibility();
+        updateRetroactiveNote();
+    });
+</script>
+
+</body>
+</html>

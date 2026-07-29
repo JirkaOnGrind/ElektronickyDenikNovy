@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Správa stroje</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+<th:block th:if="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}">
+    <div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+</th:block>
+<th:block th:unless="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}">
+    <div th:replace="~{fragments/header :: mainHeader(title='Správa stroje')}"></div>
+</th:block>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2"
+            th:text="${selectedVehicle != null ? selectedVehicle.displayName : 'Vítejte v systému'}">
+            Vítejte v systému
+        </h1>
+
+        <p class="text-gray-600" th:if="${user}">
+            Přihlášen jako: <span th:text="${user.firstName + ' ' + user.lastName}"></span>
+        </p>
+
+        <div th:if="${selectedVehicle == null}" class="mt-4 p-4 bg-yellow-50 rounded-lg max-w-md mx-auto">
+            <p class="text-yellow-800">Není vybrán žádný stroj</p>
+            <a href="/vehicles/list" class="text-blue-600 underline text-sm mt-2 inline-block">Vybrat stroj</a>
+        </div>
+
+        <div th:if="${selectedVehicle != null and vehicleCount > 1}" class="mt-4 p-4 rounded-lg max-w-md mx-auto text-center">
+            <p class="text-blue-800 font-semibold mb-2">
+                Vybraný stroj:
+                <span th:text="${selectedVehicle.displayNameWithSerial}"></span>
+            </p>
+
+            <a href="/vehicles/list"
+               class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                Změnit stroj
+            </a>
+        </div>
+    </div>
+
+    <div th:if="${successMessage}" class="max-w-5xl mx-auto mb-6 bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-xl shadow-sm">
+        <span th:text="${successMessage}"></span>
+    </div>
+
+    <div th:if="${errorMessage}" class="max-w-5xl mx-auto mb-6 bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-xl shadow-sm">
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <div th:if="${selectedVehicle != null}" class="max-w-5xl mx-auto mb-8">
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div class="px-6 py-5 bg-gray-50 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">Údaje o stroji</h2>
+                    <p class="text-sm text-gray-500 mt-1">Základní informace o právě vybraném stroji.</p>
+                </div>
+                <button th:if="${user.role == 'SUPER_ADMIN'}"
+                        type="button"
+                        onclick="toggleVehicleEditCard()"
+                        class="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-lg px-3 py-1.5 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5h2m-1-1v2m6.364 1.636a2 2 0 010 2.828l-8.9 8.9a2 2 0 01-.878.514l-3.193.912.912-3.193a2 2 0 01.514-.878l8.9-8.9a2 2 0 012.828 0z" />
+                    </svg>
+                    Upravit
+                </button>
+            </div>
+
+            <div class="px-6 py-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                <div>
+                    <span class="block text-sm font-medium text-gray-500">Značka</span>
+                    <span class="block text-base font-semibold text-gray-900 mt-1" th:text="${selectedVehicle.brand}"></span>
+                </div>
+                <div>
+                    <span class="block text-sm font-medium text-gray-500">Typ / název</span>
+                    <span class="block text-base font-semibold text-gray-900 mt-1" th:text="${selectedVehicle.type ?: 'Neuvedeno'}"></span>
+                </div>
+                <div>
+                    <span class="block text-sm font-medium text-gray-500">Kategorie</span>
+                    <span class="block text-base font-semibold text-gray-900 mt-1" th:text="${selectedVehicle.category.displayName}"></span>
+                </div>
+                <div>
+                    <span class="block text-sm font-medium text-gray-500">Výrobní číslo</span>
+                    <span class="block text-base font-semibold text-gray-900 mt-1" th:text="${selectedVehicle.serialNumber ?: 'Neuvedeno'}"></span>
+                </div>
+                <div>
+                    <span class="block text-sm font-medium text-gray-500">SPZ / registrační číslo</span>
+                    <span class="block text-base font-semibold text-gray-900 mt-1" th:text="${selectedVehicle.safeRegistrationNumber ?: 'Neuvedeno'}"></span>
+                </div>
+                <div>
+                    <span class="block text-sm font-medium text-gray-500">Nosnost</span>
+                    <span class="block text-base font-semibold text-gray-900 mt-1" th:text="${selectedVehicle.capacity != null ? selectedVehicle.capacity + ' t' : 'Neuvedeno'}"></span>
+                </div>
+            </div>
+
+            <div th:if="${user.role == 'SUPER_ADMIN'}"
+                 id="vehicle-edit-card"
+                 th:classappend="${openVehicleEdit} ? '' : ' hidden'"
+                 class="mx-6 mb-6 border border-blue-100 rounded-2xl bg-blue-50/70 p-5">
+                <div class="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-blue-900">Rychlá editace stroje</h3>
+                        <p class="text-xs text-blue-700 mt-1">Super admin může opravit základní údaje stroje bez změny firmy nebo oprávnění.</p>
+                    </div>
+                    <button type="button"
+                            onclick="toggleVehicleEditCard(false)"
+                            class="text-blue-400 hover:text-blue-600 transition"
+                            aria-label="Zavřít editaci stroje">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form th:action="@{/super-admin/vehicles/{id}/update(id=${selectedVehicle.id})}" method="post" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="brand" class="block text-sm font-medium text-gray-700 mb-1">Značka</label>
+                            <input id="brand" name="brand" type="text" th:value="${selectedVehicle.brand}" required
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Typ / název</label>
+                            <input id="type" name="type" type="text" th:value="${selectedVehicle.type}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                   placeholder="Volitelné">
+                        </div>
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Kategorie</label>
+                            <select id="category" name="category" required
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option th:each="categoryOption : ${T(com.example.authdemo.model.Vehicle.VehicleCategory).values()}"
+                                        th:value="${categoryOption.name()}"
+                                        th:text="${categoryOption.displayName}"
+                                        th:selected="${categoryOption == selectedVehicle.category}">
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="serialNumber" class="block text-sm font-medium text-gray-700 mb-1">Výrobní číslo</label>
+                            <input id="serialNumber" name="serialNumber" type="text" th:value="${selectedVehicle.serialNumber}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                   placeholder="Volitelné">
+                        </div>
+                        <div>
+                            <label for="registrationNumber" class="block text-sm font-medium text-gray-700 mb-1">SPZ / registrační číslo</label>
+                            <input id="registrationNumber" name="registrationNumber" type="text" th:value="${selectedVehicle.safeRegistrationNumber}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                   placeholder="Volitelné">
+                        </div>
+                        <div>
+                            <label for="capacity" class="block text-sm font-medium text-gray-700 mb-1">Nosnost</label>
+                            <input id="capacity" name="capacity" type="number" step="0.01" min="0" th:value="${selectedVehicle.capacity}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                   placeholder="Volitelné">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="submit"
+                                class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Uložit změny
+                        </button>
+                        <button type="button"
+                                onclick="toggleVehicleEditCard(false)"
+                                class="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2 px-4 rounded-lg border border-gray-300 transition duration-200">
+                            Zrušit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-12">
+        <a th:href="@{/daily-check(vehicleId=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-blue-100 hover:border-blue-300 h-full flex flex-col">
+                <div class="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Denní kontrola</h3>
+                <p class="text-gray-600 text-xs mt-auto">(před zahájením provozu)</p>
+            </div>
+        </a>
+
+        <a th:href="@{/maintenance(vehicleId=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-green-100 hover:border-green-300 h-full flex flex-col">
+                <div class="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-green-200 transition-colors">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Záznamy o údržbě a servisu</h3>
+                <div class="mt-auto"></div>
+            </div>
+        </a>
+
+        <a th:href="@{/revision(vehicleId=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-purple-100 hover:border-purple-300 h-full flex flex-col">
+                <div class="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-purple-200 transition-colors">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Revize</h3>
+                <div class="mt-auto"></div>
+            </div>
+        </a>
+
+        <a th:href="@{/admin/vehicles/{id}/users(id=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-blue-100 hover:border-blue-300 h-full flex flex-col">
+                <div class="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Správci</h3>
+                <div class="mt-auto"></div>
+            </div>
+        </a>
+    </div>
+
+    <div th:if="${selectedVehicle != null}" class="max-w-6xl mx-auto border-t border-gray-200 pt-8 mt-8">
+        <div class="flex justify-center">
+            <form th:action="@{/vehicles/delete}" method="post"
+                  onsubmit="return confirm('Opravdu chcete nenávratně smazat tento stroj a všechny jeho záznamy?');">
+                <input type="hidden" name="vehicleId" th:value="${selectedVehicle.id}" />
+                <button type="submit"
+                        class="bg-white text-red-600 border border-red-200 hover:bg-red-50 font-bold py-2 px-6 rounded-lg shadow-sm transition duration-200 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Smazat stroj
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto mt-3 mb-8">
+        <div class="bg-white rounded-2xl shadow-lg border border-red-100 overflow-hidden">
+            <div class="bg-gradient-to-r from-red-50 to-white px-6 py-5 border-b border-red-100">
+                <h2 class="text-2xl font-bold text-red-800">Historie závad stroje</h2>
+                <p class="text-sm text-red-700 mt-1">Přehled všech nahlášených závad od nejnovější po nejstarší.</p>
+            </div>
+
+            <div th:if="${defectHistory != null and !defectHistory.isEmpty()}" class="divide-y divide-red-100">
+                <div th:each="defect : ${defectHistory}" class="px-6 py-5">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div class="space-y-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-800 text-sm font-bold"
+                                      th:text="${defect.sourceLabel}">
+                                    Závada
+                                </span>
+                                <span class="text-sm font-semibold text-gray-900"
+                                      th:text="${#temporals.format(defect.eventDate, 'dd.MM.yyyy')}"></span>
+                                <span th:if="${defect.backfilled}"
+                                      class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold">
+                                    Zadáno zpětně
+                                </span>
+                            </div>
+
+                            <p class="text-sm text-gray-700">
+                                <span class="font-semibold">Nahlásil:</span>
+                                <span th:text="${defect.reporterName}"></span>
+                            </p>
+
+                            <p th:if="${defect.createdAt != null}" class="text-sm text-gray-500">
+                                <span class="font-semibold">Zadáno:</span>
+                                <span th:text="${#temporals.format(defect.createdAt, 'dd.MM.yyyy HH:mm')}"></span>
+                            </p>
+
+                            <div class="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-900"
+                                 th:if="${defect.description != null and !defect.description.isEmpty()}">
+                                <span class="font-semibold block mb-1">Popis závady</span>
+                                <span th:text="${defect.description}"></span>
+                            </div>
+
+                            <p th:if="${defect.description == null or defect.description.isEmpty()}"
+                               class="text-sm text-gray-400 italic">
+                                Bez doplněného popisu závady.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${defectHistory == null or defectHistory.isEmpty()}" class="px-6 py-10 text-center">
+                <p class="text-gray-500">U tohoto stroje zatím není evidována žádná závada.</p>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${selectedVehicle != null}" class="max-w-6xl mx-auto border-t border-gray-200 pt-8 mt-8"></div>
+</div>
+
+<footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+<script>
+    function toggleVehicleEditCard(forceOpen) {
+        const card = document.getElementById('vehicle-edit-card');
+        if (!card) {
+            return;
+        }
+
+        if (typeof forceOpen === 'boolean') {
+            card.classList.toggle('hidden', !forceOpen);
+            return;
+        }
+
+        card.classList.toggle('hidden');
+    }
+</script>
+</body>
+</html>

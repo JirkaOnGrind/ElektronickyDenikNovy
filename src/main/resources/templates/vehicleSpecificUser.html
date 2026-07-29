@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domů</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+<div th:replace="~{fragments/header :: mainHeader(${pageTitle})}"></div>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2"
+            th:text="${selectedVehicle != null ? selectedVehicle.displayName : 'Vítejte v systému'}">
+            Vítejte v systému
+        </h1>
+
+        <p class="text-gray-600" th:if="${user}">
+            Přihlášen jako: <span th:text="${user.firstName + ' ' + user.lastName}"></span>
+        </p>
+
+        <div th:if="${selectedVehicle == null}" class="mt-4 p-4 bg-yellow-50 rounded-lg max-w-md mx-auto">
+            <p class="text-yellow-800">Není vybrán žádný stroj</p>
+            <a href="/vehicles/list" class="text-blue-600 underline text-sm mt-2 inline-block">Vybrat stroj</a>
+        </div>
+
+        <div th:if="${selectedVehicle != null and vehicleCount > 1}" class="mt-4 p-4 rounded-lg max-w-md mx-auto text-center">
+            <p class="text-blue-800 font-semibold mb-2">
+                Vybraný stroj:
+                <span th:text="${selectedVehicle.displayNameWithSerial}"></span>
+            </p>
+
+            <a href="/vehicles/list"
+               class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                Změnit stroj
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
+        <a th:href="@{/daily-check(vehicleId=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-blue-100 hover:border-blue-300 h-full flex flex-col">
+                <div class="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Denní kontrola</h3>
+            </div>
+        </a>
+
+        <a th:href="@{/maintenance(vehicleId=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-green-100 hover:border-green-300 h-full flex flex-col">
+                <div class="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-green-200 transition-colors">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Záznamy o údržbě a servisu</h3>
+                <div class="mt-auto"></div>
+            </div>
+        </a>
+
+        <a th:href="@{/revision(vehicleId=${selectedVehicle?.id})}" class="block group"
+           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+            <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-purple-100 hover:border-purple-300 h-full flex flex-col">
+                <div class="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-purple-200 transition-colors">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-800 mb-1">Revize</h3>
+                <div class="mt-auto"></div>
+            </div>
+        </a>
+    </div>
+
+    <div th:if="${selectedVehicle != null}" class="max-w-5xl mx-auto mt-3 mb-8">
+        <div class="bg-white rounded-2xl shadow-lg border border-red-100 overflow-hidden">
+            <div class="bg-gradient-to-r from-red-50 to-white px-6 py-5 border-b border-red-100">
+                <h2 class="text-2xl font-bold text-red-800">Historie závad stroje</h2>
+                <p class="text-sm text-red-700 mt-1">Přehled všech nahlášených závad od nejnovější po nejstarší.</p>
+            </div>
+
+            <div th:if="${defectHistory != null and !defectHistory.isEmpty()}" class="divide-y divide-red-100">
+                <div th:each="defect : ${defectHistory}" class="px-6 py-5">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div class="space-y-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full bg-red-100 text-red-800 text-sm font-bold"
+                                      th:text="${defect.sourceLabel}">
+                                    Závada
+                                </span>
+                                <span class="text-sm font-semibold text-gray-900"
+                                      th:text="${#temporals.format(defect.eventDate, 'dd.MM.yyyy')}"></span>
+                                <span th:if="${defect.backfilled}"
+                                      class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold">
+                                    Zadáno zpětně
+                                </span>
+                            </div>
+
+                            <p class="text-sm text-gray-700">
+                                <span class="font-semibold">Nahlásil:</span>
+                                <span th:text="${defect.reporterName}"></span>
+                            </p>
+
+                            <p th:if="${defect.createdAt != null}" class="text-sm text-gray-500">
+                                <span class="font-semibold">Zadáno:</span>
+                                <span th:text="${#temporals.format(defect.createdAt, 'dd.MM.yyyy HH:mm')}"></span>
+                            </p>
+
+                            <div class="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-900"
+                                 th:if="${defect.description != null and !defect.description.isEmpty()}">
+                                <span class="font-semibold block mb-1">Popis závady</span>
+                                <span th:text="${defect.description}"></span>
+                            </div>
+
+                            <p th:if="${defect.description == null or defect.description.isEmpty()}"
+                               class="text-sm text-gray-400 italic">
+                                Bez doplněného popisu závady.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${defectHistory == null or defectHistory.isEmpty()}" class="px-6 py-10 text-center">
+                <p class="text-gray-500">U tohoto stroje zatím není evidována žádná závada.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+</body>
+</html>

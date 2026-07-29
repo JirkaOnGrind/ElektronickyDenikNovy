@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Výběr stroje</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+<div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+
+    <div class="flex justify-between items-center mb-6 gap-4">
+        <h1 class="text-xl sm:text-3xl font-bold text-gray-800 truncate">Vozový park</h1>
+
+        <a href="/vehicles/register"
+           class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-3 sm:px-4 rounded shadow hover:shadow-md transition duration-200 flex items-center gap-2 flex-shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span class="hidden sm:inline">Přidat stroj</span>
+            <span class="sm:hidden">Přidat</span>
+        </a>
+    </div>
+
+    <div class="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4">
+        <div class="relative w-full md:w-2/3">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+            <input type="text" id="searchInput"
+                   class="pl-10 block w-full border-gray-300 border rounded-md py-2 px-3 text-sm focus:ring-orange-500 focus:border-orange-500 placeholder-gray-400 shadow-sm"
+                   placeholder="Hledat..." onkeyup="filterTable()">
+        </div>
+
+        <div class="w-full md:w-1/3">
+            <select id="categoryFilter"
+                    class="block w-full border-gray-300 border rounded-md py-2 px-3 text-sm focus:ring-orange-500 focus:border-orange-500 shadow-sm cursor-pointer"
+                    onchange="filterTable()">
+                <option value="">Všechny kategorie</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
+
+        <div th:if="${vehicles.empty}" class="text-center py-8">
+            <p class="text-gray-500 text-lg">Zatím nejsou žádné registrované stroje.</p>
+        </div>
+
+        <div id="noResultsMessage" class="hidden text-center py-8">
+            <p class="text-gray-500 text-lg">Nebyly nalezeny žádné stroje odpovídající filtru.</p>
+        </div>
+
+        <table th:unless="${vehicles.empty}" id="vehicleTable" class="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead class="bg-gray-100 border-b border-gray-200">
+            <tr>
+                <th scope="col" class="w-auto sm:w-1/3 px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    <span class="sm:hidden">Stroj</span>
+                    <span class="hidden sm:inline">Stroj</span>
+                </th>
+                <th scope="col" class="hidden sm:table-cell w-1/6 px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Kategorie
+                </th>
+                <th scope="col" class="hidden sm:table-cell w-1/4 px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Sériové / Evid. číslo
+                </th>
+                <th scope="col" class="hidden sm:table-cell w-1/6 px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Nosnost
+                </th>
+                <th scope="col" class="w-10 sm:w-16 px-2 sm:px-6 py-3 relative">
+                    <span class="sr-only">Vybrat</span>
+                </th>
+            </tr>
+            </thead>
+            <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
+
+            <tr th:each="vehicle : ${vehicles}"
+                class="vehicle-row even:bg-slate-50 hover:bg-orange-50 cursor-pointer transition duration-150 ease-in-out"
+                th:onclick="'location.href=\'' + @{/home(vehicleId=${vehicle.id})} + '\''">
+
+                <td class="px-4 py-3 sm:px-6 text-sm text-gray-900 align-middle">
+                    <div class="flex flex-col sm:hidden gap-1">
+                        <div class="font-bold text-base search-target" th:text="${vehicle.displayName}"></div>
+
+                        <div class="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                            <span class="search-target" th:text="${vehicle.serialNumber}"></span>
+                            <span th:if="${vehicle.capacity}" class="text-gray-400">|</span>
+                            <span th:if="${vehicle.capacity}" th:text="${vehicle.capacity} + ' kg'"></span>
+                        </div>
+
+                        <div>
+                            <span class="category-value inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200"
+                                  th:text="${vehicle.category.displayName}">
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="hidden sm:block font-bold search-target" th:text="${vehicle.displayName}"></div>
+                </td>
+
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                    <span class="category-value px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800 border border-orange-200"
+                          th:text="${vehicle.category.displayName}">
+                    </span>
+                </td>
+
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900 font-mono search-target" th:text="${vehicle.serialNumber}"></div>
+                    <div class="text-xs text-gray-500 font-mono search-target" th:if="${vehicle.registrationNumber}" th:text="${vehicle.registrationNumber}"></div>
+                </td>
+
+                <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <span th:if="${vehicle.capacity}" th:text="${vehicle.capacity} + ' kg'"></span>
+                    <span th:unless="${vehicle.capacity}">-</span>
+                </td>
+
+                <td class="px-2 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        populateCategories();
+    });
+
+    function populateCategories() {
+        const rows = document.querySelectorAll('.vehicle-row');
+        const categorySet = new Set();
+        const select = document.getElementById('categoryFilter');
+
+        rows.forEach(row => {
+            const catSpan = row.querySelector('.category-value');
+            if (catSpan) {
+                categorySet.add(catSpan.innerText.trim());
+            }
+        });
+
+        categorySet.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.innerText = cat;
+            select.appendChild(option);
+        });
+    }
+
+    function filterTable() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const categoryFilter = document.getElementById('categoryFilter').value;
+        const rows = document.querySelectorAll('.vehicle-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const categoryText = row.querySelector('.category-value').innerText.trim();
+            const targets = row.querySelectorAll('.search-target');
+            let searchTextContent = "";
+            targets.forEach(t => searchTextContent += t.innerText.toLowerCase() + " ");
+
+            const matchesSearch = searchTextContent.includes(searchInput);
+            const matchesCategory = categoryFilter === "" || categoryText === categoryFilter;
+
+            if (matchesSearch && matchesCategory) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const noResultsMsg = document.getElementById('noResultsMessage');
+        const table = document.getElementById('vehicleTable');
+
+        if (visibleCount === 0 && rows.length > 0) {
+            noResultsMsg.classList.remove('hidden');
+            table.classList.add('hidden');
+        } else {
+            noResultsMsg.classList.add('hidden');
+            table.classList.remove('hidden');
+        }
+    }
+</script>
+<footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+</body>
+</html>

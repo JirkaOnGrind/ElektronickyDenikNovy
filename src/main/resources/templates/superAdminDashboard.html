@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Super Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+<div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+
+<div class="flex-grow container mx-auto px-4 py-8 space-y-6">
+    <div class="text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Centrální správa</h1>
+        <p class="text-gray-600">Přihlášen jako Super Admin:
+            <span class="font-bold text-blue-600" th:text="${user.firstName + ' ' + user.lastName}"></span>
+        </p>
+    </div>
+
+    <div th:if="${successMessage}" class="max-w-5xl mx-auto rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="max-w-5xl mx-auto rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800" th:text="${errorMessage}"></div>
+
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-800">Registrované společnosti</h2>
+        </div>
+
+        <div th:if="${companies.empty}" class="p-8 text-center text-gray-500">
+            Zatím nejsou registrované žádné společnosti.
+        </div>
+
+        <div th:unless="${companies.empty}">
+            <div class="hidden md:block overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Název společnosti</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">IČO</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Klíč</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Adresa</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Akce</th>
+                    </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tr th:each="company : ${companies}" class="hover:bg-blue-50 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-900" th:text="${company.companyName}"></div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" th:text="${company.ico}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500" th:text="${company.key}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" th:text="${company.address}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div class="flex justify-end space-x-2">
+                                <a th:href="@{/super-admin/switch-company/{id}(id=${company.id})}"
+                                   class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
+                                    Spravovat
+                                </a>
+                                <a th:href="@{/super-admin/delete-company/{id}(id=${company.id})}"
+                                   onclick="return confirm('Opravdu chcete smazat tuto firmu a všechny její uživatele?')"
+                                   class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 shadow-sm transition">
+                                    Smazat
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="md:hidden divide-y divide-gray-200">
+                <div th:each="company : ${companies}" class="p-4 space-y-3 hover:bg-gray-50 transition">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <div class="text-lg font-bold text-gray-900" th:text="${company.companyName}"></div>
+                            <div class="text-sm text-gray-500" th:text="'IČO: ' + ${company.ico}"></div>
+                        </div>
+                        <div class="bg-gray-100 px-2 py-1 rounded text-[10px] font-mono text-gray-500" th:text="${company.key}"></div>
+                    </div>
+
+                    <div class="text-sm text-gray-600">
+                        <span class="font-semibold">Adresa:</span>
+                        <span th:text="${company.address}"></span>
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <a th:href="@{/super-admin/switch-company/{id}(id=${company.id})}"
+                           class="flex-1 inline-flex justify-center items-center px-3 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
+                            Spravovat
+                        </a>
+                        <a th:href="@{/super-admin/delete-company/{id}(id=${company.id})}"
+                           onclick="return confirm('Opravdu chcete smazat tuto firmu?')"
+                           class="inline-flex justify-center items-center px-3 py-2.5 border border-red-200 text-sm font-medium rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition">
+                            Smazat
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <details class="bg-white shadow-lg rounded-xl border border-gray-200 p-6">
+        <summary class="inline-flex cursor-pointer list-none items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+            Vytvořit firmu
+        </summary>
+
+        <div class="mt-5">
+            <form th:action="@{/super-admin/create-company}" method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="companyName" class="block text-sm font-medium text-gray-700 mb-1">Název firmy</label>
+                    <input id="companyName" name="companyName" type="text" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div>
+                    <label for="ico" class="block text-sm font-medium text-gray-700 mb-1">IČO</label>
+                    <input id="ico" name="ico" type="text" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Adresa</label>
+                    <input id="address" name="address" type="text" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div>
+                    <label for="dic" class="block text-sm font-medium text-gray-700 mb-1">DIČ</label>
+                    <input id="dic" name="dic" type="text" class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div>
+                    <label for="key" class="block text-sm font-medium text-gray-700 mb-1">Klíč firmy</label>
+                    <input id="key" name="key" type="text" required class="w-full rounded-lg border border-gray-300 px-4 py-2.5 font-mono focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                        Vytvořit firmu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </details>
+</div>
+
+<footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+</body>
+</html>

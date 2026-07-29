@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontrola uložena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+<th:block th:if="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}">
+    <div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+</th:block>
+
+<th:block th:unless="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}">
+    <div th:replace="~{fragments/header :: mainHeader(title='Denní kontrola')}"></div>
+</th:block>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+    <div class="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Denní kontrola byla úspěšně uložena</h1>
+
+        <div th:if="${dailyCheck}" class="bg-gray-50 rounded-lg p-6 mb-6 text-left">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-600">Datum kontroly:</p>
+                    <p class="font-semibold" th:text="${#temporals.format(dailyCheck.checkDate, 'dd.MM.yyyy')}"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Stroj:</p>
+                    <p class="font-semibold" th:text="${dailyCheck.vehicle.displayName}"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Obsluha:</p>
+                    <p class="font-semibold" th:text="${dailyCheck.user.firstName + ' ' + dailyCheck.user.lastName}"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Výsledek:</p>
+                    <p class="font-semibold" th:class="${dailyCheck.overallResult == STAV.BEZ_ZAVAD} ? 'text-green-600' : 'text-red-600'"
+                       th:text="${dailyCheck.overallResult == STAV.BEZ_ZAVAD} ? 'Bez závad' : 'Závada'"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a th:href="@{/daily-check(vehicleId=${dailyCheck.vehicle.id}, mode='create')}"
+               class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium text-center">
+                Nová kontrola
+            </a>
+
+            <a th:href="@{/home(vehicleId=${dailyCheck.vehicle.id})}"
+               class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition font-medium text-center">
+                Domů
+            </a>
+
+            <a th:href="@{/daily-check(vehicleId=${dailyCheck.vehicle.id})}"
+               th:if="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}"
+               class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-medium text-center">
+                Historie kontrol
+            </a>
+        </div>
+
+        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+            <p class="text-sm text-blue-700">
+                Záznam kontroly byl uložen. Pro tisk použijte tlačítko "Historie kontrol".
+            </p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Zásady ochrany osobních údajů | Elektronický Deník</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+</head>
+<body class="bg-gray-50 text-gray-700 font-sans antialiased">
+
+<header class="bg-white shadow pt-[env(safe-area-inset-top)] sticky top-0 z-50">
+    <div class="px-4 py-3 flex justify-between items-center">
+
+        <h1 class="text-lg sm:text-2xl font-bold text-gray-800 truncate mr-2">
+            Elektronický Deník
+        </h1>
+
+        <div class="flex items-center flex-shrink-0">
+
+            <a th:href="@{/login}"
+               class="hidden sm:block text-gray-700 font-medium hover:text-blue-600 transition">
+                Zpět na přihlášení
+            </a>
+
+            <a th:href="@{/login}"
+               class="sm:hidden p-1 -mr-2 text-gray-600 active:text-blue-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     class="h-7 w-7"
+                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+            </a>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-10">
+
+    <div class="bg-white rounded-xl shadow-lg p-8 sm:p-12">
+
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Zásady ochrany osobních údajů</h1>
+        <p class="text-sm text-gray-500 mb-8">Poslední aktualizace: 10. února 2026</p>
+
+        <div class="space-y-6">
+
+            <section>
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">1. Úvod</h2>
+                <p class="leading-relaxed">
+                    Aplikace <strong>Elektronický Deník</strong> (dále jen "Aplikace") slouží pro interní potřeby evidence, údržby a revize vozového parku a stavebních strojů.
+                    Respektujeme vaše soukromí a zavazujeme se chránit vaše osobní údaje.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">2. Jaká data sbíráme</h2>
+                <p class="mb-2">Pro zajištění funkčnosti Aplikace sbíráme a uchováváme následující typy údajů:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>Identifikační údaje:</strong> Jméno, příjmení a e-mailová adresa (pro přihlášení a identifikaci technika).</li>
+                    <li><strong>Provozní údaje:</strong> Záznamy o kontrolách strojů, stavu tachometru a závadách.</li>
+                    <li><strong>Technická data:</strong> IP adresa a základní informace o zařízení pro zajištění bezpečnosti a diagnostiku chyb.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">3. Jak data využíváme</h2>
+                <p class="leading-relaxed">
+                    Veškerá data jsou využívána výhradně pro účely správy vozového parku, plánování údržby a generování výkazů.
+                    Data <strong>nejsou prodávána</strong> ani sdílena s třetími stranami pro marketingové účely.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">4. Oprávnění v mobilní aplikaci</h2>
+                <p class="mb-2">Aplikace může vyžadovat následující oprávnění ve vašem zařízení:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><strong>Úložiště:</strong> Pro dočasné ukládání dat v offline režimu.</li>
+                    <li><strong>Internet:</strong> Pro synchronizaci dat se serverem.</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">5. Smazání účtu a dat</h2>
+                <p class="leading-relaxed mb-2">
+                    Máte právo požádat o odstranění svého uživatelského účtu a veškerých osobních údajů.
+                </p>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mt-4">
+                    <p class="text-sm text-blue-800">
+                        <strong>Jak požádat o smazání:</strong><br>
+                        Kontaktujte administrátora na níže uvedeném e-mailu nebo použijte volbu v nastavení svého profilu (pokud je dostupná).
+                        Vaše žádost bude vyřízena do 30 dnů.
+                    </p>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">6. Kontakt</h2>
+                <p class="leading-relaxed">
+                    V případě dotazů ohledně ochrany osobních údajů nás kontaktujte na:
+                </p>
+                <p class="mt-2 font-medium">E-mail: <a href="mailto:info@provoznidenik.com" class="text-blue-600 hover:underline">info@provoznidenik.com</a></p>
+            </section>
+
+        </div>
+    </div>
+
+    <div class="text-center text-gray-400 text-sm mt-8 pb-8">
+        &copy; 2026 Elektronický Deník. Všechna práva vyhrazena.
+    </div>
+
+</main>
+
+</body>
+</html>

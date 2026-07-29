@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Historie revizí</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .print-only { display: none; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: white; }
+            .print-container { width: 100%; max-width: 100%; padding: 0; margin: 0; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; color: black; font-size: 12px; }
+            .shadow, .rounded-lg { box-shadow: none !important; border-radius: 0 !important; }
+        }
+    </style>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col text-gray-800">
+
+<div class="no-print">
+    <th:block th:if="${user.role == 'ADMIN' || user.role == 'OWNER'|| user.role == 'SUPER_ADMIN'}">
+        <div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+    </th:block>
+    <th:block th:unless="${user.role == 'ADMIN' || user.role == 'OWNER'|| user.role == 'SUPER_ADMIN'}">
+        <div th:replace="~{fragments/header :: mainHeader(title=${pageTitle})}"></div>
+    </th:block>
+</div>
+
+<div class="flex-grow container mx-auto px-4 py-8 print-container">
+
+    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="w-full">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 break-words">
+                Evidence revizí:
+                <span th:text="${vehicle.displayName}" class="text-purple-600 block md:inline"></span>
+            </h1>
+            <div class="print-only mt-2 text-xl font-bold uppercase tracking-wider border-b-2 border-gray-300 pb-1 mb-2">
+                Kategorie: Revize
+            </div>
+            <p class="text-gray-600 mt-1 text-sm md:text-base">
+                Evidenční číslo: <span th:text="${vehicle.registrationNumber}" class="font-semibold"></span>
+            </p>
+        </div>
+
+        <div class="flex gap-3 no-print w-full md:w-auto">
+            <a th:href="@{/revision(vehicleId=${vehicle.id}, mode='create')}"
+               class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow flex items-center justify-center gap-2 transition flex-1 md:flex-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Nová revize
+            </a>
+            <button onclick="window.print()"
+                    class="hidden md:flex bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded shadow items-center gap-2 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Tisk
+            </button>
+        </div>
+    </div>
+
+    <div class="no-print bg-white p-4 rounded-lg shadow mb-6 border border-gray-200">
+        <form method="get" class="flex flex-col md:flex-row items-end gap-4">
+            <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
+            <div class="w-full md:w-auto">
+                <label class="block text-sm font-medium text-gray-700">Od data:</label>
+                <input type="date" name="startDate" th:value="${startDate}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            </div>
+            <div class="w-full md:w-auto">
+                <label class="block text-sm font-medium text-gray-700">Do data:</label>
+                <input type="date" name="endDate" th:value="${endDate}" class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            </div>
+            <button type="submit" class="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded shadow text-sm md:text-base">Filtrovat</button>
+        </form>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
+        <table class="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="w-auto md:w-32 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <span class="md:hidden">Revize</span>
+                    <span class="hidden md:inline">Datum</span>
+                </th>
+                <th scope="col" class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Četnost</th>
+                <th scope="col" class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provedl</th>
+                <th scope="col" class="w-24 md:w-32 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Výsledek</th>
+                <th scope="col" class="hidden md:table-cell w-40 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zadání</th>
+                <th scope="col" class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Závady</th>
+            </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+            <tr th:each="rev : ${revisions}" class="hover:bg-gray-50 transition">
+
+                <td class="px-4 md:px-6 py-4 text-sm text-gray-900 align-top">
+                    <div class="flex flex-col gap-1">
+                        <div class="font-semibold" th:text="${#temporals.format(rev.revisionDate, 'dd.MM.yyyy')}"></div>
+
+                        <div class="md:hidden flex flex-col gap-1 mt-1">
+                            <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded border border-purple-200 w-fit"
+                                  th:text="${rev.frequency.displayName}"></span>
+
+                            <span class="text-xs text-gray-600 font-medium" th:text="${rev.user.firstName + ' ' + rev.user.lastName}"></span>
+
+                            <div th:if="${rev.createdAt != null}" class="text-xs text-gray-500">
+                                <span th:text="${#temporals.format(rev.createdAt, 'dd.MM.yyyy HH:mm')}"></span>
+                            </div>
+                            <div th:if="${rev.createdAt != null and rev.createdAt.toLocalDate().isAfter(rev.revisionDate)}"
+                                 class="inline-flex items-center w-fit px-2 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold">
+                                Zadáno zpětně
+                            </div>
+
+                            <div class="text-xs text-red-600 italic"
+                                 th:if="${rev.description != null && !rev.description.isEmpty()}"
+                                 th:text="${rev.description}"></div>
+                        </div>
+                    </div>
+                </td>
+
+                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700 align-top" th:text="${rev.frequency.displayName}"></td>
+
+                <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold align-top" th:text="${rev.user.firstName + ' ' + rev.user.lastName}"></td>
+
+                <td class="px-4 md:px-6 py-4 whitespace-nowrap align-top">
+                    <span th:if="${rev.result.name() == 'BEZ_ZAVAD'}" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">BEZ ZÁVAD</span>
+                    <span th:if="${rev.result.name() == 'ZAVAD'}" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">ZÁVADA</span>
+                </td>
+
+                <td class="hidden md:table-cell px-6 py-4 text-sm text-gray-500 align-top">
+                    <div th:if="${rev.createdAt != null}" class="space-y-1">
+                        <div th:text="${#temporals.format(rev.createdAt, 'dd.MM.yyyy HH:mm')}"></div>
+                        <span th:if="${rev.createdAt.toLocalDate().isAfter(rev.revisionDate)}"
+                              class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold">
+                            Zadáno zpětně
+                        </span>
+                    </div>
+                    <span th:if="${rev.createdAt == null}" class="text-gray-300 italic">-</span>
+                </td>
+
+                <td class="hidden md:table-cell px-6 py-4 text-sm text-gray-500 break-words align-top" th:text="${rev.description != null && !rev.description.isEmpty() ? rev.description : '-'}"></td>
+            </tr>
+            <tr th:if="${revisions.empty}">
+                <td colspan="6" class="px-6 py-8 text-center text-gray-500">Žádné revize v tomto období.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-8 text-center">
+        <a th:href="@{/home(vehicleId=${vehicle.id})}"
+           class="inline-block bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+            Zpět na stroj
+        </a>
+    </div>
+</div>
+<footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+</body>
+</html>

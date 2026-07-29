@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Offline Režim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: sans-serif; background-color: #f3f4f6; }
+        .hidden { display: none !important; }
+        /* Jemná animace pro přechody mezi "stránkami" */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col pt-[env(safe-area-inset-top)]">
+
+<header class="bg-gray-800 text-white shadow p-4 sticky top-0 z-50">
+    <div class="flex justify-between items-center container mx-auto px-2">
+        <h1 class="text-lg font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+            </svg>
+            OFFLINE REŽIM
+        </h1>
+        <div class="flex items-center gap-3">
+            <span id="queue-badge" class="hidden bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">0</span>
+            <button onclick="window.location.href='https://elektronicky-denik.onrender.com'"
+                    class="text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600 border border-gray-600">
+                Online?
+            </button>
+        </div>
+    </div>
+</header>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+
+    <div id="view-list" class="fade-in">
+        <div id="vehicle-grid" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <p class="text-center col-span-full text-gray-500">Načítám data...</p>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="hidden fade-in">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2" id="dash-title">...</h1>
+
+            <p class="text-gray-600">Režim bez připojení</p>
+
+            <div class="mt-4 p-4 rounded-lg max-w-md mx-auto text-center bg-white shadow-sm border border-gray-100">
+                <p class="text-blue-800 font-semibold mb-2">
+                    Vybraný stroj: <span id="dash-spz">...</span>
+                </p>
+
+                <button onclick="showList()"
+                        class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                    Změnit stroj
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
+            <div onclick="startDailyCheck()" class="block group cursor-pointer">
+                <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-blue-100 hover:border-blue-300 h-full flex flex-col">
+                    <div class="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1">Denní kontrola</h3>
+                </div>
+            </div>
+
+            <div onclick="startMaintenance()" class="block group cursor-pointer">
+                <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-green-100 hover:border-green-300 h-full flex flex-col">
+                    <div class="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-green-200 transition-colors">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1">Záznamy o údržbě</h3>
+                    <div class="mt-auto"></div>
+                </div>
+            </div>
+
+            <div onclick="startRevision()" class="block group cursor-pointer">
+                <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-purple-100 hover:border-purple-300 h-full flex flex-col">
+                    <div class="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-purple-200 transition-colors">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1">Revize</h3>
+                    <div class="mt-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-form-daily" class="hidden fade-in bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 relative">
+            <h1 class="text-2xl font-bold text-gray-800 text-center w-full">Denní kontrola stroje</h1>
+        </div>
+
+        <form onsubmit="saveDaily(event)" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Datum kontroly</label>
+                    <input type="date" id="dailyDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stroj</label>
+                    <p class="text-gray-800 font-semibold" id="daily-vehicle-name">...</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stav</label>
+                    <p class="text-gray-800 font-semibold">Offline záznam</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Výsledek kontroly</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Celkový výsledek</label>
+                    <div class="flex space-x-6">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="dailyResult" value="BEZ_ZAVAD" class="text-green-600 focus:ring-green-500 h-5 w-5" required onchange="toggleHidden('daily-defects', false)">
+                            <span class="ml-2 text-green-700 font-medium">Bez závad</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="dailyResult" value="ZAVAD" class="text-red-600 focus:ring-red-500 h-5 w-5" required onchange="toggleHidden('daily-defects', true)">
+                            <span class="ml-2 text-red-700 font-medium">Závada</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="daily-defects" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Popis závad</label>
+                    <textarea id="dailyDesc" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Popište zjištěnou závadu..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between mt-6 gap-4">
+                <button type="submit" class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline text-center">
+                    Uložit offline
+                </button>
+                <button type="button" onclick="showDashboard()" class="w-full md:w-auto inline-flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                    Zpět na vozidlo
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div id="view-form-maint" class="hidden fade-in bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 relative">
+            <h1 class="text-2xl font-bold text-gray-800 text-center w-full">Záznam o údržbě</h1>
+        </div>
+
+        <form onsubmit="saveMaintenance(event)" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-green-50 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Datum údržby</label>
+                    <input type="date" id="maintDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stroj</label>
+                    <p class="text-gray-800 font-semibold" id="maint-vehicle-name">...</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stav</label>
+                    <p class="text-gray-800 font-semibold">Offline záznam</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Výsledek údržby</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Celkový výsledek</label>
+                    <div class="flex space-x-6">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="maintResult" value="BEZ_ZAVAD" class="text-green-600 focus:ring-green-500 h-5 w-5" required onchange="toggleHidden('maint-defects', false)">
+                            <span class="ml-2 text-green-700 font-medium">Bez závad</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="maintResult" value="ZAVAD" class="text-red-600 focus:ring-red-500 h-5 w-5" required onchange="toggleHidden('maint-defects', true)">
+                            <span class="ml-2 text-red-700 font-medium">Závada</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="maint-defects" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Popis závad</label>
+                    <textarea id="maintDesc" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Popis provedené údržby..."></textarea>
+                </div>
+
+                <div class="pt-4 border-t border-gray-200">
+                    <label class="block text-sm font-bold text-gray-800 mb-1">Následující revize</label>
+                    <input type="date" id="maintNextRev" class="w-full md:w-1/2 px-3 py-2 border-2 border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-orange-50 text-gray-900 font-medium">
+                    <p class="text-xs text-gray-500 mt-1">Vyplňte pouze pokud je známo</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between mt-6 gap-4">
+                <button type="submit" class="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200 text-center">
+                    Uložit záznam
+                </button>
+                <button type="button" onclick="showDashboard()" class="w-full md:w-auto inline-flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                    Zpět na vozidlo
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div id="view-form-rev" class="hidden fade-in bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 relative">
+            <h1 class="text-2xl font-bold text-gray-800 text-center w-full">Záznam o revizi</h1>
+        </div>
+
+        <form onsubmit="saveRevision(event)" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-purple-50 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Datum revize</label>
+                    <input type="date" id="revDate" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Četnost kontroly</label>
+                    <select id="revFreq" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+                        <option value="" disabled selected>-- Vyberte četnost --</option>
+                        <option value="MESICNE_1X">1x měsíčně</option>
+                        <option value="MESICE_3X">1x 3 měsíce</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stroj</label>
+                    <p class="text-gray-800 font-semibold" id="rev-vehicle-name">...</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stav</label>
+                    <p class="text-gray-800 font-semibold">Offline záznam</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Výsledek revize</h2>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Celkový výsledek</label>
+                    <div class="flex space-x-6">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="revResult" value="BEZ_ZAVAD" class="text-green-600 focus:ring-green-500 h-5 w-5" required onchange="toggleHidden('rev-defects', false)">
+                            <span class="ml-2 text-green-700 font-medium">Bez závad</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="revResult" value="ZAVAD" class="text-red-600 focus:ring-red-500 h-5 w-5" required onchange="toggleHidden('rev-defects', true)">
+                            <span class="ml-2 text-red-700 font-medium">Závada</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="rev-defects" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Popis závad</label>
+                    <textarea id="revDesc" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Popis zjištěných závad..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between mt-6 gap-4">
+                <button type="submit" class="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200 text-center">
+                    Uložit záznam
+                </button>
+                <button type="button" onclick="showDashboard()" class="w-full md:w-auto inline-flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                    Zpět na vozidlo
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // --- 1. NEJDŘÍV DEFINUJEME FUNKCE PRO MOST ---
+    function getStorage(key) {
+        if (window.Android) {
+            const data = window.Android.getData(key);
+            // DEBUG: Abychom viděli, co se děje
+            if (key === 'offline_vehicles') {
+                // alert("DEBUG Android čte: " + data); // Odkomentuj pro ladění
+            }
+            return JSON.parse(data);
+        }
+        // Fallback pro PC prohlížeč
+        return JSON.parse(localStorage.getItem(key) || '[]');
+    }
+
+    function setStorage(key, data) {
+        if (window.Android) {
+            window.Android.saveData(key, JSON.stringify(data));
+        } else {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+    }
+
+    // --- 2. TEPRVE TEĎ NAČÍTÁME DATA ---
+    // Používáme naši funkci getStorage(), ne localStorage přímo!
+    const vehicles = getStorage('offline_vehicles');
+    let selectedVehicle = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        renderVehicleList();
+        updateQueueBadge();
+    });
+
+    function renderVehicleList() {
+        const grid = document.getElementById('vehicle-grid');
+        grid.innerHTML = '';
+        if (!vehicles || vehicles.length === 0) {
+            grid.innerHTML = `<div class="col-span-full text-center py-8">
+                <p class="text-gray-500 text-lg">Žádná offline data.</p>
+                <p class="text-sm text-gray-400">Připojte se k internetu a otevřete aplikaci pro stažení dat.</p>
+            </div>`;
+            return;
+        }
+        vehicles.forEach(v => {
+            const card = document.createElement('div');
+            card.className = "bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-gray-100";
+            card.innerHTML = `
+                    <div class="text-center">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">${v.name}</h3>
+                        <p class="text-gray-600 mb-4">Evid. číslo: <span class="font-medium">${v.spz || '-'}</span></p>
+                        <button onclick="selectVehicle(${v.id})"
+                           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition inline-block w-full font-bold">
+                            Vybrat tento stroj
+                        </button>
+                    </div>`;
+            grid.appendChild(card);
+        });
+    }
+
+    function selectVehicle(id) {
+        selectedVehicle = vehicles.find(v => v.id === id);
+        document.getElementById('dash-title').innerText = selectedVehicle.name;
+        document.getElementById('dash-spz').innerText = selectedVehicle.spz || '';
+        switchView('view-dashboard');
+    }
+
+    function showList() { selectedVehicle = null; switchView('view-list'); }
+    function showDashboard() { switchView('view-dashboard'); }
+
+    // --- PŘEPÍNÁNÍ FORMULÁŘŮ ---
+    function startDailyCheck() {
+        setupForm('daily-vehicle-name', 'dailyDate', 'dailyResult', 'dailyDesc', 'daily-defects');
+        switchView('view-form-daily');
+    }
+
+    function startMaintenance() {
+        setupForm('maint-vehicle-name', 'maintDate', 'maintResult', 'maintDesc', 'maint-defects');
+        document.getElementById('maintNextRev').value = "";
+        switchView('view-form-maint');
+    }
+
+    function startRevision() {
+        setupForm('rev-vehicle-name', 'revDate', 'revResult', 'revDesc', 'rev-defects');
+        document.getElementById('revFreq').selectedIndex = 0;
+        switchView('view-form-rev');
+    }
+
+    function setupForm(nameId, dateId, radioName, descId, defectDivId) {
+        document.getElementById(nameId).innerText = selectedVehicle.name;
+        document.getElementById(dateId).valueAsDate = new Date();
+        document.querySelectorAll(`input[name="${radioName}"]`).forEach(el => el.checked = false);
+        document.getElementById(descId).value = "";
+        toggleHidden(defectDivId, false);
+    }
+
+    function toggleHidden(id, show) {
+        const el = document.getElementById(id);
+        if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+    }
+
+    function switchView(viewId) {
+        ['view-list', 'view-dashboard', 'view-form-daily', 'view-form-maint', 'view-form-rev'].forEach(id => {
+            document.getElementById(id).classList.add('hidden');
+        });
+        document.getElementById(viewId).classList.remove('hidden');
+        window.scrollTo(0, 0);
+    }
+
+    // --- UKLÁDÁNÍ (SAVE) ---
+    function saveToQueue(type, payload) {
+        const record = {
+            type: type,
+            payload: payload,
+            timestamp: new Date().getTime(),
+            vehicleName: selectedVehicle.name
+        };
+        // ZMĚNA: Používáme getStorage/setStorage
+        const queue = getStorage('offline_queue');
+        queue.push(record);
+        setStorage('offline_queue', queue);
+
+        alert('✅ Uloženo do paměti. Prosím nechte aplikaci běžet na pozadí, data se odešlou po připojení.');
+        updateQueueBadge();
+        showDashboard();
+    }
+
+    function saveDaily(e) {
+        e.preventDefault();
+        const result = document.querySelector('input[name="dailyResult"]:checked').value;
+        saveToQueue('DAILY_CHECK', {
+            vehicleId: selectedVehicle.id,
+            checkDate: document.getElementById('dailyDate').value,
+            overallResult: result,
+            defectsDescription: document.getElementById('dailyDesc').value
+        });
+    }
+
+    function saveMaintenance(e) {
+        e.preventDefault();
+        const result = document.querySelector('input[name="maintResult"]:checked').value;
+        const nextRev = document.getElementById('maintNextRev').value;
+        saveToQueue('MAINTENANCE', {
+            vehicleId: selectedVehicle.id,
+            maintenanceDate: document.getElementById('maintDate').value,
+            result: result,
+            description: document.getElementById('maintDesc').value,
+            nextRevisionDate: nextRev ? nextRev : null
+        });
+    }
+
+    function saveRevision(e) {
+        e.preventDefault();
+        const result = document.querySelector('input[name="revResult"]:checked').value;
+        saveToQueue('REVISION', {
+            vehicleId: selectedVehicle.id,
+            revisionDate: document.getElementById('revDate').value,
+            frequency: document.getElementById('revFreq').value,
+            result: result,
+            description: document.getElementById('revDesc').value
+        });
+    }
+
+    function updateQueueBadge() {
+        // ZMĚNA: Používáme getStorage
+        const queue = getStorage('offline_queue');
+        const badge = document.getElementById('queue-badge');
+        if (queue && queue.length > 0) {
+            badge.innerText = queue.length;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
+    }
+</script>
+</body>
+</html>

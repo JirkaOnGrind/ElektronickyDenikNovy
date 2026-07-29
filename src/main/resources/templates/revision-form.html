@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="cs" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Revize</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/images/favicon.png">
+    <link rel="apple-touch-icon" href="/images/favicon.png">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+<div class="no-print">
+    <th:block th:if="${user.role == 'ADMIN' || user.role == 'OWNER'|| user.role == 'SUPER_ADMIN'}">
+        <div th:replace="~{fragments/headerAdmin :: mainHeader}"></div>
+    </th:block>
+    <th:block th:unless="${user.role == 'ADMIN' || user.role == 'OWNER'|| user.role == 'SUPER_ADMIN'}">
+        <div th:replace="~{fragments/header :: mainHeader(title=${pageTitle})}"></div>
+    </th:block>
+</div>
+
+<div class="flex-grow container mx-auto px-4 py-8">
+    <div class="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 relative">
+            <h1 class="text-2xl font-bold text-gray-800 text-center w-full md:absolute md:left-0 md:right-0 pointer-events-none">
+                Záznam o revizi
+            </h1>
+
+            <div class="hidden md:block"></div>
+
+            <a th:if="${canViewHistory}"
+               th:href="@{/revision(vehicleId=${vehicle.id})}"
+               class="relative pointer-events-auto mt-4 md:mt-0 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded shadow text-sm flex items-center gap-2 z-10 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Historie revizí
+            </a>
+        </div>
+
+        <form th:action="@{/revision}" th:object="${revisionForm}" method="post" class="space-y-6">
+            <input type="hidden" name="vehicleId" th:value="${vehicle.id}">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-purple-50 rounded-lg">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Datum revize</label>
+                    <input type="date" th:field="*{revisionDate}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p id="retroactive-note" class="hidden text-xs text-amber-700 mt-2 font-medium">
+                        Poznámka: zadáváte záznam zpětně.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Četnost kontroly</label>
+                    <select th:field="*{frequency}" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white">
+                        <option value="" disabled selected>-- Vyberte četnost --</option>
+                        <option th:each="freq : ${frequencies}"
+                                th:value="${freq}"
+                                th:text="${freq.displayName}"></option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stroj</label>
+                    <p class="text-gray-800 font-semibold" th:text="${vehicle.displayName}"></p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Revizní technik</label>
+                    <p class="text-gray-800 font-semibold" th:text="${user.firstName + ' ' + user.lastName}"></p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-50 rounded-lg space-y-4">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Výsledek revize</h2>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Celkový výsledek</label>
+                    <div class="flex space-x-6">
+                        <label class="inline-flex items-center">
+                            <input type="radio" th:field="*{result}" value="BEZ_ZAVAD" class="text-green-600 focus:ring-green-500" required>
+                            <span class="ml-2 text-green-700 font-medium">Bez závad</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" th:field="*{result}" value="ZAVAD" class="text-red-600 focus:ring-red-500" required>
+                            <span class="ml-2 text-red-700 font-medium">Závada</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="description-wrapper" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Popis závad</label>
+                    <textarea th:field="*{description}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" rows="4" placeholder="Popis provedené revize nebo zjištěných závad..."></textarea>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between mt-6 gap-4">
+                <button type="submit"
+                        class="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200 text-center">
+                    Uložit záznam
+                </button>
+
+                <a th:href="@{/home(vehicleId=${vehicle.id})}"
+                   class="w-full md:w-auto inline-flex items-center justify-center bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded shadow transition duration-200">
+                    Zpět na stroj
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const descriptionWrapper = document.getElementById('description-wrapper');
+        const radioButtons = document.querySelectorAll('input[name="result"]');
+        const revisionDateInput = document.querySelector('input[name="revisionDate"]');
+        const retroactiveNote = document.getElementById('retroactive-note');
+
+        function updateVisibility() {
+            const checkedRadio = document.querySelector('input[name="result"]:checked');
+            if (checkedRadio && checkedRadio.value === 'ZAVAD') {
+                descriptionWrapper.classList.remove('hidden');
+            } else {
+                descriptionWrapper.classList.add('hidden');
+            }
+        }
+
+        function updateRetroactiveNote() {
+            if (!revisionDateInput || !retroactiveNote || !revisionDateInput.value) {
+                return;
+            }
+
+            const selectedDate = new Date(revisionDateInput.value + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate < today) {
+                retroactiveNote.classList.remove('hidden');
+            } else {
+                retroactiveNote.classList.add('hidden');
+            }
+        }
+
+        radioButtons.forEach(function(radio) {
+            radio.addEventListener('change', updateVisibility);
+        });
+
+        if (revisionDateInput) {
+            revisionDateInput.addEventListener('change', updateRetroactiveNote);
+        }
+
+        updateVisibility();
+        updateRetroactiveNote();
+    });
+</script>
+</body>
+</html>
