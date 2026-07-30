@@ -10,7 +10,7 @@ COPY src ./src
 RUN mvn --batch-mode --no-transfer-progress clean verify
 
 # -------- Run stage --------
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 
 WORKDIR /app
 
