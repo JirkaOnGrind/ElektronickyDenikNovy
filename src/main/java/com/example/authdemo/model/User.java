@@ -3,7 +3,7 @@ package com.example.authdemo.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Entity
 @Table(name = "users")
@@ -11,6 +11,8 @@ import java.util.Random;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     @Column(name = "first_name", nullable = false)
     private String firstName;
 
@@ -23,16 +25,21 @@ public class User {
     @Column(name = "phone_number", unique = true)
     private String phone;
 
+    @Column(name = "workplace")
+    private String workplace;
+
     @Column(name = "user_key", nullable=false)
     private String key;
 
     @Column(nullable = false)
+    @ToString.Exclude
     private String password;
 
     @Column
     private String role;
 
     @Column(nullable = false)
+    @ToString.Exclude
     private String verificationKey;
 
     @Column(nullable = false)
@@ -203,8 +210,7 @@ public class User {
 
     // GENERACE VERIFIKACNIHO KODU
     public static String generateVerificationCode() {
-        Random random = new Random();
-        int code = random.nextInt(900000) + 100000; // 100000–999999
+        int code = SECURE_RANDOM.nextInt(900000) + 100000; // 100000–999999
         return String.valueOf(code);
     }
 

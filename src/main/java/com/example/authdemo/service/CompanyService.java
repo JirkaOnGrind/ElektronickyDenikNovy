@@ -6,6 +6,8 @@ import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.CompanyRepository;
 import com.example.authdemo.repository.UserRepository;
 import com.example.authdemo.repository.VehicleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import java.util.Optional;
 
 @Service
 public class CompanyService {
+    private static final Logger log = LoggerFactory.getLogger(CompanyService.class);
 
     @Autowired
     private CompanyRepository companyRepository;
@@ -53,12 +56,18 @@ public class CompanyService {
             Optional<Company> company = companyRepository.findByAdmin(userId);
             company.ifPresent(companyRepository::delete);
         } catch (Exception e) {
-            System.err.println("Chyba pri mazani company: " + e.getMessage());
+            log.error("Company cleanup failed: {}", e.getClass().getSimpleName());
         }
     }
 
     @Transactional
     public String updateCompanyKey(Long adminId, String newKey) {
+        String normalizedKey = CompanyKeyPolicy.normalize(newKey);
+        if (!CompanyKeyPolicy.isAcceptable(normalizedKey)) {
+            return "Klíč musí mít alespoň " + CompanyKeyPolicy.MINIMUM_LENGTH
+                    + " znaků a nesmí obsahovat mezery.";
+        }
+
         Optional<Company> companyOpt = companyRepository.findByAdmin(adminId);
         if (companyOpt.isEmpty()) {
             return "Firma nenalezena.";
@@ -66,16 +75,16 @@ public class CompanyService {
 
         Company company = companyOpt.get();
 
-        if (company.getKey().equals(newKey)) {
+        if (company.getKey().equals(normalizedKey)) {
             return "Novy klic je shodny s aktualnim.";
         }
 
-        if (companyRepository.existsByKey(newKey)) {
+        if (companyRepository.existsByKey(normalizedKey)) {
             return "Tento klic je jiz pouzivan jinou spolecnosti.";
         }
 
         String oldKey = company.getKey();
-        company.setKey(newKey);
+        company.setKey(normalizedKey);
         companyRepository.save(company);
 
         List<User> users = userRepository.findByKeyAndDeletedAtIsNull(oldKey);

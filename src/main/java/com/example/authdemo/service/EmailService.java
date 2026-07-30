@@ -51,7 +51,7 @@ public class EmailService {
         user.setVerificationKey(hashedVerificationKey);
         userRepository.save(user);
 
-        sendMessage(message, user.getEmail(), "registration-verification");
+        sendMessage(message, "registration-verification");
     }
 
     @Async
@@ -79,13 +79,13 @@ public class EmailService {
         user.setVerificationKey(hashedVerificationKey);
         userRepository.save(user);
 
-        sendMessage(message, user.getEmail(), "verification-resend-by-id");
+        sendMessage(message, "verification-resend-by-id");
     }
 
     public void sendVerificationEmailViaEmail(String email) {
         Optional<User> dbUser = userRepository.findByEmailAndDeletedAtIsNull(email);
         if (dbUser.isEmpty()) {
-            log.warn("Password reset mail skipped, user not found by email={}", email);
+            log.warn("Password reset mail skipped, user not found.");
             return;
         }
 
@@ -106,19 +106,21 @@ public class EmailService {
         user.setVerificationKey(hashedVerificationKey);
         userRepository.save(user);
 
-        sendMessage(message, user.getEmail(), "password-reset");
+        sendMessage(message, "password-reset");
     }
 
-    private void sendMessage(SimpleMailMessage message, String recipient, String purpose) {
-        log.info("Attempting to send email purpose={} from={} to={}", purpose, senderEmail, recipient);
+    private void sendMessage(SimpleMailMessage message, String purpose) {
+        log.info("Attempting to send email purpose={}", purpose);
         try {
             mailSender.send(message);
-            log.info("Email sent successfully purpose={} to={}", purpose, recipient);
+            log.info("Email sent successfully purpose={}", purpose);
         } catch (MailException ex) {
-            log.error("Email sending failed purpose={} to={} message={}", purpose, recipient, ex.getMessage(), ex);
+            log.error("Email sending failed purpose={} type={}",
+                    purpose, ex.getClass().getSimpleName());
             throw ex;
         } catch (RuntimeException ex) {
-            log.error("Unexpected email failure purpose={} to={} message={}", purpose, recipient, ex.getMessage(), ex);
+            log.error("Unexpected email failure purpose={} type={}",
+                    purpose, ex.getClass().getSimpleName());
             throw ex;
         }
     }
@@ -142,20 +144,20 @@ public class EmailService {
     }
 
     public boolean checkVerificationCodeViaEmail(String email, String code) {
-        log.info("Verification attempt via email={}", email);
+        log.info("Password reset verification attempt.");
         Optional<User> dbUser = userRepository.findByEmailAndDeletedAtIsNull(email);
         if (dbUser.isPresent()) {
             User user = dbUser.get();
             boolean verifyCodesMatches = passwordEncoder.matches(code, user.getVerificationKey());
             if (verifyCodesMatches) {
-                log.info("Verification successful via email={}", email);
+                log.info("Password reset verification successful.");
                 user.setVerificationKey("null");
                 user.setVerificated(true);
                 userRepository.save(user);
             }
             return verifyCodesMatches;
         }
-        log.warn("Verification failed, user not found by email={}", email);
+        log.warn("Password reset verification failed, user not found.");
         return false;
     }
 }

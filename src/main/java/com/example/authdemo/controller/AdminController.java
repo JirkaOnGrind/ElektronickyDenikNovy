@@ -8,6 +8,7 @@ import com.example.authdemo.repository.VehicleRepository;
 import com.example.authdemo.service.CompanyService;
 import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
+import com.example.authdemo.service.WorkplaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.UUID;
 
 @Controller
@@ -34,6 +36,8 @@ public class AdminController {
     private UserService userService;
     @Autowired
     private CompanyService companyService; // Injektáž služby
+    @Autowired
+    private WorkplaceService workplaceService;
     @Autowired
     private final VehicleRepository vehicleRepository;
 
@@ -112,7 +116,15 @@ public class AdminController {
             users.removeIf(u -> "OWNER".equals(u.getRole()) || "ADMIN".equals(u.getRole()));
         }
 
+        TreeSet<String> userWorkplaces = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        users.stream()
+                .map(User::getWorkplace)
+                .map(Vehicle::cleanText)
+                .filter(workplace -> workplace != null)
+                .forEach(userWorkplaces::add);
+
         model.addAttribute("users", users);
+        model.addAttribute("userWorkplaceOptions", List.copyOf(userWorkplaces));
         model.addAttribute("loggedUser", loggedUser);
         model.addAttribute("pageTitle", "Uživatelé");
         return "usersList";
@@ -127,6 +139,10 @@ public class AdminController {
             throw new AccessDeniedException("Nemáš oprávnění zobrazit tohoto uživatele");
         }
 
+        if ("SUPER_ADMIN".equals(targetUser.getRole())) {
+            throw new AccessDeniedException("Účet superadmina nelze spravovat z firemní administrace.");
+        }
+
         if ("ADMIN".equals(loggedUser.getRole())) {
             if ("OWNER".equals(targetUser.getRole()) || "ADMIN".equals(targetUser.getRole())) {
                 throw new AccessDeniedException("Nemáte oprávnění spravovat administrátory nebo vlastníka.");
@@ -138,9 +154,80 @@ public class AdminController {
         model.addAttribute("user", targetUser);
         model.addAttribute("loggedUser", loggedUser);
         model.addAttribute("vehicles", allVehicles);
+        model.addAttribute("canEditUser", canEditUser(loggedUser, targetUser));
+        model.addAttribute("editableRoles", getEditableRoles(loggedUser));
         model.addAttribute("pageTitle", "Detail uživatele");
 
         return "userDetail";
+    }
+
+    @GetMapping("/users/{id}/edit")
+    public String showUserEdit(@PathVariable Long id,
+                               @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
+                               RedirectAttributes redirectAttributes) {
+        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
+        User targetUser = userRepository.findByIdAndDeletedAtIsNull(id).orElseThrow();
+        requireEditableUser(loggedUser, targetUser);
+
+        redirectAttributes.addFlashAttribute("openUserEdit", true);
+        return "redirect:/admin/users/" + id;
+    }
+
+    @PostMapping("/users/{id}/edit")
+    public String updateUser(@PathVariable Long id,
+                             @RequestParam String firstName,
+                             @RequestParam String lastName,
+                             @RequestParam String email,
+                             @RequestParam(required = false) String phone,
+                             @RequestParam String role,
+                             @RequestParam(required = false) String workplace,
+                             @RequestParam(required = false) String newWorkplace,
+                             @RequestParam(required = false) String newPassword,
+                             @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
+                             RedirectAttributes redirectAttributes) {
+        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
+        User targetUser = userRepository.findByIdAndDeletedAtIsNull(id).orElseThrow();
+        requireEditableUser(loggedUser, targetUser);
+
+        if (!getEditableRoles(loggedUser).contains(role.toUpperCase())) {
+            throw new AccessDeniedException("Nemáte oprávnění nastavit požadovanou roli.");
+        }
+
+        String result = userService.updateUser(
+                id,
+                firstName,
+                lastName,
+                email,
+                phone,
+                role,
+                workplaceService.resolveWorkplace(
+                        targetUser.getKey(),
+                        workplace,
+                        newWorkplace
+                ),
+                newPassword
+        );
+
+        if ("success".equals(result)) {
+            redirectAttributes.addFlashAttribute("successMessage", "Údaje uživatele byly úspěšně upraveny.");
+        } else {
+            if ("email_exists".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Uživatel s tímto e-mailem už existuje.");
+            } else if ("phone_exists".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Uživatel s tímto telefonním číslem už existuje.");
+            } else if ("missing_required_fields".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Vyplňte jméno, příjmení a e-mail.");
+            } else if ("invalid_role".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Zvolená role není platná.");
+            } else if ("weak_password".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Heslo musí mít alespoň 12 znaků.");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Úpravu uživatele se nepodařilo uložit.");
+            }
+            redirectAttributes.addFlashAttribute("openUserEdit", true);
+        }
+
+        return "redirect:/admin/users/" + id;
     }
 
     @PostMapping("/users/{userId}/permissions")
@@ -152,8 +239,12 @@ public class AdminController {
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
         User targetUser = userRepository.findByIdAndDeletedAtIsNull(userId).orElseThrow();
 
-        if (!targetUser.getKey().equals(loggedUser.getKey())) {
-            throw new AccessDeniedException("Nemáš oprávnění.");
+        if (!targetUser.getKey().equals(loggedUser.getKey()) || !"USER".equals(targetUser.getRole())) {
+            throw new AccessDeniedException("Nemáte oprávnění měnit přístupy tohoto uživatele.");
+        }
+
+        if (!canEditUser(loggedUser, targetUser)) {
+            throw new AccessDeniedException("Nemáte oprávnění měnit přístupy tohoto uživatele.");
         }
 
         if (allowedVehicleIds == null) allowedVehicleIds = new ArrayList<>();
@@ -186,10 +277,7 @@ public class AdminController {
 
     @GetMapping("/machines")
     public String machinesList(Model model, Principal principal) {
-        List<Vehicle> vehicles = vehicleService.getVehiclesForCurrentUser(principal);
-        model.addAttribute("pageTitle", "Všechny stroje");
-        model.addAttribute("vehicles", vehicles);
-        return "vehicle-list-admin";
+        return "redirect:/vehicles/list";
     }
 
     @PostMapping("users/delete/{id}")
@@ -198,6 +286,13 @@ public class AdminController {
                                  RedirectAttributes redirectAttributes) {
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
         User targetUser = userRepository.findByIdAndDeletedAtIsNull(id).orElseThrow();
+
+        if (!targetUser.getKey().equals(loggedUser.getKey())
+                || targetUser.getId().equals(loggedUser.getId())
+                || "SUPER_ADMIN".equals(targetUser.getRole())
+                || "OWNER".equals(targetUser.getRole())) {
+            throw new AccessDeniedException("Nemáte oprávnění smazat tohoto uživatele.");
+        }
 
         if ("OWNER".equals(loggedUser.getRole())|| "SUPER_ADMIN".equals(loggedUser.getRole())) {
             // Allowed
@@ -228,6 +323,7 @@ public class AdminController {
 
     @PostMapping("/users/save")
     public String saveUser(@ModelAttribute("user") User user,
+                           @RequestParam(required = false) String newWorkplace,
                            Principal principal,
                            Model model,
                            RedirectAttributes redirectAttributes) {
@@ -235,6 +331,9 @@ public class AdminController {
         if (adminOptional.isEmpty()) return "redirect:/login";
         User admin = adminOptional.get();
 
+        // Tento endpoint vždy vytváří nový účet. ID nesmí být převzato z HTTP
+        // model bindingu, jinak by podvržený parametr mohl přepsat existující účet.
+        user.setId(null);
         user.setKey(admin.getKey());
         user.setRole("USER");
         user.setGdprAccepted(true);
@@ -244,6 +343,11 @@ public class AdminController {
         user.setVerificated(true);
         user.setVerificationKey(UUID.randomUUID().toString());
         user.setDeletedAt(null);
+        user.setWorkplace(workplaceService.resolveWorkplace(
+                admin.getKey(),
+                user.getWorkplace(),
+                newWorkplace
+        ));
 
         String result = userService.registerUser(user);
 
@@ -257,6 +361,8 @@ public class AdminController {
                 model.addAttribute("errorMessage", "Uživatel s tímto telefonním číslem již existuje.");
             } else if ("invalid_key".equals(result)) {
                 model.addAttribute("errorMessage", "Neplatný firemní klíč.");
+            } else if ("weak_password".equals(result)) {
+                model.addAttribute("errorMessage", "Heslo musí mít alespoň 12 znaků.");
             } else {
                 model.addAttribute("errorMessage", "Nastala neznámá chyba.");
             }
@@ -271,6 +377,10 @@ public class AdminController {
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
         if (!"OWNER".equals(loggedUser.getRole()) && !"SUPER_ADMIN".equals(loggedUser.getRole())) {
             throw new AccessDeniedException("Pouze vlastník (OWNER) může jmenovat administrátory.");
+        }
+        User targetUser = userRepository.findByIdAndDeletedAtIsNull(id).orElseThrow();
+        if (!targetUser.getKey().equals(loggedUser.getKey()) || !"USER".equals(targetUser.getRole())) {
+            throw new AccessDeniedException("Nemáte oprávnění změnit roli tohoto uživatele.");
         }
         userService.changeRole(id, "ADMIN");
         redirectAttributes.addFlashAttribute("successMessage", "Uživatel byl povýšen na admina.");
@@ -360,15 +470,47 @@ public class AdminController {
         if (!"OWNER".equals(loggedUser.getRole()) && !"SUPER_ADMIN".equals(loggedUser.getRole())) {
             throw new AccessDeniedException("Pouze vlastník (OWNER) nebo Super Admin může odebírat oprávnění.");
         }
-        if ("OWNER".equals(targetUser.getRole())) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Nemůžete odebrat oprávnění vlastníkovi.");
-            return "redirect:/admin/users/" + id;
+        if (!targetUser.getKey().equals(loggedUser.getKey()) || !"ADMIN".equals(targetUser.getRole())) {
+            throw new AccessDeniedException("Nemáte oprávnění změnit roli tohoto uživatele.");
         }
 
         userService.changeRole(id, "USER");
         redirectAttributes.addFlashAttribute("successMessage", "Uživateli byla odebrána administrátorská práva.");
         return "redirect:/admin/usersList";
     }
+
+    private void requireEditableUser(User loggedUser, User targetUser) {
+        if (!targetUser.getKey().equals(loggedUser.getKey()) || !canEditUser(loggedUser, targetUser)) {
+            throw new AccessDeniedException("Nemáte oprávnění upravovat tohoto uživatele.");
+        }
+    }
+
+    private boolean canEditUser(User loggedUser, User targetUser) {
+        if ("SUPER_ADMIN".equals(targetUser.getRole()) || loggedUser.getId().equals(targetUser.getId())) {
+            return false;
+        }
+
+        if ("SUPER_ADMIN".equals(loggedUser.getRole())) {
+            return true;
+        }
+
+        if ("OWNER".equals(loggedUser.getRole())) {
+            return !"OWNER".equals(targetUser.getRole());
+        }
+
+        return "ADMIN".equals(loggedUser.getRole()) && "USER".equals(targetUser.getRole());
+    }
+
+    private List<String> getEditableRoles(User loggedUser) {
+        if ("SUPER_ADMIN".equals(loggedUser.getRole())) {
+            return List.of("USER", "ADMIN", "OWNER");
+        }
+        if ("OWNER".equals(loggedUser.getRole())) {
+            return List.of("USER", "ADMIN");
+        }
+        return List.of("USER");
+    }
+
     @ModelAttribute
     public void addAttributes(Model model, @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
         if (authUser != null) {
@@ -376,18 +518,10 @@ public class AdminController {
                 companyService.findByKey(loggedUser.getKey()).ifPresent(company -> {
                     model.addAttribute("companyName", company.getCompanyName());
                 });
-            });
-        }
-    }
-    // Přidejte do src/main/java/com/example/authdemo/controller/AdminController.java
-
-    @ModelAttribute
-    public void addCompanyName(Model model, @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
-        if (authUser != null) {
-            userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).ifPresent(loggedUser -> {
-                companyService.findByKey(loggedUser.getKey()).ifPresent(company -> {
-                    model.addAttribute("companyName", company.getCompanyName());
-                });
+                model.addAttribute(
+                        "workplaceOptions",
+                        workplaceService.getCompanyWorkplaces(loggedUser.getKey())
+                );
             });
         }
     }

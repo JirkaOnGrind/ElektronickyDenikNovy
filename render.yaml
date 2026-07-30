@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: elektronicky-denik
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: SSH_ENABLED
+        value: "true"
+      - key: SSH_HOST
+        sync: false
+      - key: SSH_PORT
+        value: "22"
+      - key: SSH_USER
+        sync: false
+      - key: SSH_PASSWORD
+        sync: false
+      - key: SSH_REMOTE_DB_HOST
+        value: "127.0.0.1"
+      - key: SSH_REMOTE_DB_PORT
+        value: "3306"
+      - key: SSH_LOCAL_PORT
+        value: "3306"
+      - key: SSH_CONNECT_ATTEMPTS
+        value: "6"
+      - key: SSH_RECONNECT_INTERVAL_MS
+        value: "15000"
+      - key: SSH_STRICT_HOST_KEY_CHECKING
+        value: "yes"
+      - key: SSH_KNOWN_HOSTS_FILE
+        value: /etc/secrets/ssh_known_hosts
+      - key: DATASOURCE_URL
+        sync: false
+      - key: DATASOURCE_USER
+        sync: false
+      - key: DATASOURCE_PASSWORD
+        sync: false
+      - key: DB_POOL_MAX_SIZE
+        value: "5"
+      - key: DB_POOL_MIN_IDLE
+        value: "1"
+      - key: JPA_DDL_AUTO
+        value: validate
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: REMEMBER_ME_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: APPLICATION_LOG_LEVEL
+        value: INFO

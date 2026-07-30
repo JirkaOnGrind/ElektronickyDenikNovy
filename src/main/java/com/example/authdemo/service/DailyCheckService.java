@@ -5,9 +5,12 @@ import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.DailyCheckRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class DailyCheckService {
@@ -18,6 +21,19 @@ public class DailyCheckService {
     public DailyCheck saveDailyCheck(DailyCheck dailyCheck) {
         return dailyCheckRepository.save(dailyCheck);
     }
+
+    @Transactional
+    public synchronized Optional<DailyCheck> saveDailyCheckIfAbsent(DailyCheck dailyCheck) {
+        Long vehicleId = dailyCheck.getVehicle().getId();
+        LocalDate checkDate = dailyCheck.getCheckDate();
+
+        if (dailyCheckRepository.existsByVehicleIdAndCheckDate(vehicleId, checkDate)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(dailyCheckRepository.saveAndFlush(dailyCheck));
+    }
+
     public Optional<DailyCheck> getDailyCheckById(Long id) {
         return dailyCheckRepository.findById(id);
     }
@@ -40,6 +56,22 @@ public class DailyCheckService {
 
     public boolean existsDailyCheckForVehicleAndDate(Long vehicleId, LocalDate date) {
         return dailyCheckRepository.existsByVehicleIdAndCheckDate(vehicleId, date);
+    }
+
+    public boolean existsDailyCheckForVehicleToday(Long vehicleId) {
+        return dailyCheckRepository.existsTodayByVehicleId(vehicleId);
+    }
+
+    public Set<Long> getCheckedVehicleIdsToday(List<Vehicle> vehicles) {
+        List<Long> vehicleIds = vehicles.stream()
+                .map(Vehicle::getId)
+                .toList();
+
+        if (vehicleIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        return dailyCheckRepository.findCheckedVehicleIds(LocalDate.now(), vehicleIds);
     }
 
     public Optional<DailyCheck> findLastDefect(Vehicle vehicle) {

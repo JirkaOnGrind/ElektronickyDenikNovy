@@ -93,7 +93,7 @@ public class SuperAdminController {
         return "redirect:/super-admin/dashboard";
     }
 
-    @GetMapping("/switch-company/{companyId}")
+    @PostMapping("/switch-company/{companyId}")
     public String switchCompany(@PathVariable Long companyId,
                                 @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
                                 RedirectAttributes redirectAttributes) {
@@ -113,7 +113,7 @@ public class SuperAdminController {
         return "redirect:/admin/dashboard";
     }
 
-    @GetMapping("/delete-company/{companyId}")
+    @PostMapping("/delete-company/{companyId}")
     public String deleteCompany(@PathVariable Long companyId, RedirectAttributes redirectAttributes) {
         try {
             Optional<Company> companyOpt = companyRepository.findById(companyId);
@@ -124,7 +124,7 @@ public class SuperAdminController {
                 redirectAttributes.addFlashAttribute("errorMessage", "Firma nebyla nalezena.");
             }
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Chyba pri mazani: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Firmu se nepodařilo smazat.");
         }
         return "redirect:/super-admin/dashboard";
     }
@@ -158,6 +158,9 @@ public class SuperAdminController {
             redirectAttributes.addFlashAttribute("openUserEdit", true);
         } else if ("missing_required_fields".equals(result)) {
             redirectAttributes.addFlashAttribute("errorMessage", "Vyplňte jméno, příjmení a email.");
+            redirectAttributes.addFlashAttribute("openUserEdit", true);
+        } else if ("weak_password".equals(result)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Heslo musí mít alespoň 12 znaků.");
             redirectAttributes.addFlashAttribute("openUserEdit", true);
         } else {
             redirectAttributes.addFlashAttribute("errorMessage", "Úpravu uživatele se nepodařilo uložit.");

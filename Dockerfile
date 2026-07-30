@@ -1,32 +1,27 @@
 # -------- Build stage --------
-FROM maven:3.8.4-openjdk-17 AS build
+FROM maven:3.9.11-eclipse-temurin-17 AS build
 
-
-# Nastav pracovní adresář v kontejneru
 WORKDIR /app
 
-# Zkopíruj pom.xml a stáhni závislosti (cache pro rychlejší build)
 COPY pom.xml .
-RUN mvn dependency:go-offline
+RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
 
-# Zkopíruj zdrojové soubory
 COPY src ./src
-
-# Builduj projekt (skip testy, pokud nechceš, aby se spouštěly testy)
-RUN mvn clean package -DskipTests
+RUN mvn --batch-mode --no-transfer-progress clean verify
 
 # -------- Run stage --------
-FROM eclipse-temurin:17-jdk-focal
+FROM eclipse-temurin:17-jre-jammy
 
-# Nastav pracovní adresář
 WORKDIR /app
 
-# Zkopíruj JAR z build stage
-COPY --from=build /app/target/authdemo-0.0.1-SNAPSHOT.jar .
+RUN groupadd --gid 1000 app \
+    && useradd --uid 1000 --gid app --home-dir /app --shell /usr/sbin/nologin app
+COPY --from=build --chown=app:app /app/target/authdemo-0.0.1-SNAPSHOT.jar /app/app.jar
 
-
-# Expose port (ten, který používá Spring Boot, defaultně 8080)
 EXPOSE 8080
 
-# Spusť aplikaci
-ENTRYPOINT ["java", "-jar", "/app/authdemo-0.0.1-SNAPSHOT.jar"]
+USER app
+
+# Nechá dost paměti pro nativní části JVM, Tomcat, JSch a databázový ovladač.
+# Při neobnovitelném OOM nechá Render proces čistě restartovat.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:+ExitOnOutOfMemoryError", "-jar", "/app/app.jar"]

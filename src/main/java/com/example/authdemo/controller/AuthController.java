@@ -36,11 +36,15 @@ public class AuthController {
     @Autowired
     private CompanyService companyService;
     @Autowired
+    private CompanyRegistrationService companyRegistrationService;
+    @Autowired
     private DailyCheckService dailyCheckService;
     @Autowired
     private MaintenanceService maintenanceService;
     @Autowired
     private RevisionService revisionService;
+    @Autowired
+    private WorkplaceService workplaceService;
 
     // 1. KOŘEN WEBU ("/")
     @GetMapping("/")
@@ -141,6 +145,8 @@ public class AuthController {
             emailService.sendVerificationEmail(user);
             session.setAttribute("pendingVerificationUserId", user.getId());
             session.setAttribute("verificationAttempts", 0);
+            session.setAttribute("verificationIssuedAt", System.currentTimeMillis());
+            session.setMaxInactiveInterval(15 * 60);
             return "redirect:/verification";
         } else {
             model.addAttribute("pageTitle", "Register");
@@ -150,6 +156,8 @@ public class AuthController {
                 model.addAttribute("error", "Telefonní číslo již existuje");
             } else if ("invalid_key".equals(result)) {
                 model.addAttribute("error", "Neplatný klíč");
+            } else if ("weak_password".equals(result)) {
+                model.addAttribute("error", "Heslo musí mít alespoň 12 znaků");
             } else {
                 model.addAttribute("error", "Došlo k chybě při registraci");
             }
@@ -193,35 +201,60 @@ public class AuthController {
         }
 
         User user = new User(firstName, lastName, email, phone, password, key);
-        user.setRole("OWNER");
-
-        String result = userService.registerUser(user);
-        if (!result.equals("success")) {
-            model.addAttribute("pageTitle", "Register");
-            switch(result) {
-                case "email_exists": model.addAttribute("error", "Email již existuje"); break;
-                case "phone_exists": model.addAttribute("error", "Telefonní číslo již existuje"); break;
-                case "invalid_key": model.addAttribute("error", "Špatný klíč"); break;
-            }
-            return "registerCompany";
+        String result;
+        try {
+            result = companyRegistrationService.registerOwnerAndCompany(
+                    user,
+                    companyName,
+                    ico,
+                    address,
+                    dic,
+                    key
+            );
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            result = "company_conflict";
         }
 
-        Company company = new Company(companyName, ico, address, dic, user.getId(), key);
-        if (companyService.registerCompany(company)) {
+        if ("success".equals(result)) {
             emailService.sendVerificationEmail(user);
             session.setAttribute("pendingVerificationUserId", user.getId());
             session.setAttribute("verificationAttempts", 0);
+            session.setAttribute("verificationIssuedAt", System.currentTimeMillis());
+            session.setMaxInactiveInterval(15 * 60);
             return "redirect:/verification";
-        } else {
-            model.addAttribute("pageTitle", "Registrace společnosti");
-            model.addAttribute("error", "IČO již existuje");
-            return "registerCompany";
         }
+
+        model.addAttribute("pageTitle", "Registrace společnosti");
+        if ("email_exists".equals(result)) {
+            model.addAttribute("error", "Email již existuje");
+        } else if ("phone_exists".equals(result)) {
+            model.addAttribute("error", "Telefonní číslo již existuje");
+        } else if ("ico_exists".equals(result)) {
+            model.addAttribute("error", "IČO již existuje");
+        } else if ("company_name_exists".equals(result)) {
+            model.addAttribute("error", "Název společnosti již existuje");
+        } else if ("company_key_exists".equals(result)) {
+            model.addAttribute("error", "Tento firemní klíč již existuje");
+        } else if ("weak_company_key".equals(result)) {
+            model.addAttribute(
+                    "error",
+                    "Firemní klíč musí mít alespoň 20 znaků a nesmí obsahovat mezery"
+            );
+        } else if ("missing_required_fields".equals(result)) {
+            model.addAttribute("error", "Vyplňte všechna povinná pole");
+        } else if ("weak_password".equals(result)) {
+            model.addAttribute("error", "Heslo musí mít alespoň 12 znaků");
+        } else {
+            model.addAttribute("error", "Registraci společnosti se nepodařilo dokončit");
+        }
+        return "registerCompany";
     }
 
     // HOME -----------------------------------------------------------
     @GetMapping("/home")
     public String showHomePage(@RequestParam(value = "vehicleId", required = false) Long vehicleId,
+                               @RequestParam(value = "dailyCheckAlreadyCompleted", defaultValue = "false")
+                               boolean dailyCheckAlreadyCompleted,
                                Principal principal,
                                Model model,
                                Authentication authentication) {
@@ -246,6 +279,11 @@ public class AuthController {
 
         if (currentUser == null) return "redirect:/login";
 
+        model.addAttribute(
+                "workplaceOptions",
+                workplaceService.getCompanyWorkplaces(currentUser.getKey())
+        );
+
         // 1. Fetch available vehicles (needed for count)
         List<Vehicle> availableVehicles = vehicleService.getVehiclesForCurrentUser(principal);
         model.addAttribute("vehicleCount", availableVehicles.size());
@@ -265,13 +303,7 @@ public class AuthController {
                     return "redirect:/vehicles/list?error=access_denied";
                 }
 
-                // b) Kontrola oprávnění (Viditelnost / Admin / Owner / VehicleAdmin)
-                boolean isGlobalAdmin = "ADMIN".equals(currentUser.getRole()) || "OWNER".equals(currentUser.getRole()) || "SUPER_ADMIN".equals(currentUser.getRole());
-                boolean isVehicleAdmin = v.getVehicleAdmins().contains(currentUser);
-                boolean isAllowedUser = v.getAllowedUsers().contains(currentUser);
-
-                // Pokud není Admin, není Správce vozíku A NEMÁ povolenou viditelnost -> Vyhodíme ho
-                if (!isGlobalAdmin && !isVehicleAdmin && !isAllowedUser) {
+                if (!vehicleService.canAccessVehicle(currentUser, v)) {
                     return "redirect:/vehicles/list?error=access_denied";
                 }
                 // --- SECURITY CHECK END ---
@@ -292,7 +324,14 @@ public class AuthController {
         if (selectedVehicle != null) {
             List<VehicleDefectItem> defectHistory = buildDefectHistory(selectedVehicle);
             model.addAttribute("defectHistory", defectHistory);
+            model.addAttribute(
+                    "dailyCheckCompletedToday",
+                    dailyCheckService.existsDailyCheckForVehicleToday(selectedVehicle.getId())
+            );
+        } else {
+            model.addAttribute("dailyCheckCompletedToday", false);
         }
+        model.addAttribute("dailyCheckAlreadyCompleted", dailyCheckAlreadyCompleted);
 
 
         boolean isAdminOrOwner = authentication.getAuthorities().stream()
@@ -303,7 +342,7 @@ public class AuthController {
 
         boolean isVehicleAdmin = false;
         if (selectedVehicle != null) {
-            isVehicleAdmin = selectedVehicle.getVehicleAdmins().contains(currentUser);
+            isVehicleAdmin = vehicleService.canManageVehicle(currentUser, selectedVehicle);
         }
 
         if (isAdminOrOwner || isVehicleAdmin) {
@@ -359,10 +398,4 @@ public class AuthController {
         return items;
     }
 
-    // --- LOGOUT ---
-    @GetMapping("/logout")
-    public String logout(HttpSession session) {
-        session.invalidate();
-        return "redirect:/login";
-    }
 }

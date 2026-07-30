@@ -5,9 +5,12 @@ import com.example.authdemo.model.User;
 import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.VehicleRepository;
 import com.example.authdemo.service.CompanyService;
+import com.example.authdemo.service.DailyCheckService;
 import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
+import com.example.authdemo.service.WorkplaceService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,11 +18,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -36,7 +42,13 @@ public class VehicleController {
     private CompanyService companyService;
 
     @Autowired
+    private DailyCheckService dailyCheckService;
+
+    @Autowired
     private VehicleRepository vehicleRepository;
+
+    @Autowired
+    private WorkplaceService workplaceService;
 
     @GetMapping("/vehicles/register")
     public String showVehicleRegistrationForm(Model model) {
@@ -51,12 +63,14 @@ public class VehicleController {
                                   @RequestParam(required = false) String serialNumber,
                                   @RequestParam(required = false) Double capacity,
                                   @RequestParam(required = false) String registrationNumber,
+                                  @RequestParam(required = false) String workplace,
+                                  @RequestParam(required = false) String newWorkplace,
                                   Principal principal,
                                   Model model) {
 
         String userEmail = principal.getName();
         User currentUser = userService.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("Uživatel s emailem " + userEmail + " nenalezen."));
+                .orElseThrow(() -> new AccessDeniedException("Přihlášený uživatel nebyl nalezen."));
 
         Vehicle vehicle = new Vehicle();
         vehicle.setBrand(brand);
@@ -65,6 +79,11 @@ public class VehicleController {
         vehicle.setSerialNumber(serialNumber);
         vehicle.setCapacity(capacity);
         vehicle.setRegistrationNumber(registrationNumber);
+        vehicle.setWorkplace(workplaceService.resolveWorkplace(
+                currentUser.getKey(),
+                workplace,
+                newWorkplace
+        ));
         vehicle.setCompanyKey(currentUser.getKey());
 
         if (vehicleService.registerVehicle(vehicle)) {
@@ -93,6 +112,16 @@ public class VehicleController {
 
         model.addAttribute("pageTitle", pageTitle);
         model.addAttribute("vehicles", vehicles);
+        model.addAttribute("checkedVehicleIds", dailyCheckService.getCheckedVehicleIdsToday(vehicles));
+        model.addAttribute("workplaceOptions", workplaceService.getCompanyWorkplaces(
+                userService.findByEmail(principal.getName()).orElseThrow().getKey()
+        ));
+        model.addAttribute("operatorOptions", userService.findActiveUsersByCompanyKey(
+                        userService.findByEmail(principal.getName()).orElseThrow().getKey()).stream()
+                .filter(user -> "USER".equalsIgnoreCase(user.getRole()))
+                .sorted(Comparator.comparing(User::getLastName, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(User::getFirstName, String.CASE_INSENSITIVE_ORDER))
+                .toList());
 
         boolean isAdminOrOwner = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -109,6 +138,63 @@ public class VehicleController {
         }
 
         return "vehicle-list";
+    }
+
+    @GetMapping("/admin/vehicle/edit/{id}")
+    public String showVehicleEdit(@PathVariable Long id,
+                                  Principal principal,
+                                  RedirectAttributes redirectAttributes) {
+        requireCompanyAdministratorForVehicle(id, principal);
+        redirectAttributes.addFlashAttribute("openVehicleEdit", true);
+        return "redirect:/home?vehicleId=" + id;
+    }
+
+    @PostMapping("/admin/vehicle/edit/{id}")
+    public String updateVehicle(@PathVariable Long id,
+                                @RequestParam String brand,
+                                @RequestParam(required = false) String type,
+                                @RequestParam Vehicle.VehicleCategory category,
+                                @RequestParam(required = false) String serialNumber,
+                                @RequestParam(required = false) Double capacity,
+                                @RequestParam(required = false) String registrationNumber,
+                                @RequestParam(required = false) String workplace,
+                                @RequestParam(required = false) String newWorkplace,
+                                Principal principal,
+                                RedirectAttributes redirectAttributes) {
+        Vehicle vehicle = requireCompanyAdministratorForVehicle(id, principal);
+        String resolvedWorkplace = workplaceService.resolveWorkplace(
+                vehicle.getCompanyKey(),
+                workplace,
+                newWorkplace
+        );
+
+        String result = vehicleService.updateVehicle(
+                id,
+                brand,
+                type,
+                category,
+                serialNumber,
+                capacity,
+                registrationNumber,
+                resolvedWorkplace
+        );
+
+        if ("success".equals(result)) {
+            redirectAttributes.addFlashAttribute("successMessage", "Údaje stroje byly úspěšně upraveny.");
+        } else {
+            if ("serial_exists".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Stroj s tímto výrobním číslem už existuje.");
+            } else if ("missing_required_fields".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Vyplňte značku stroje a kategorii.");
+            } else if ("invalid_capacity".equals(result)) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Nosnost musí být nezáporná hodnota v kilogramech.");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Úpravu stroje se nepodařilo uložit.");
+            }
+            redirectAttributes.addFlashAttribute("openVehicleEdit", true);
+        }
+
+        return "redirect:/home?vehicleId=" + id;
     }
 
     @PostMapping("/vehicles/delete")
@@ -174,6 +260,23 @@ public class VehicleController {
         private String name;
     }
 
+    private Vehicle requireCompanyAdministratorForVehicle(Long vehicleId, Principal principal) {
+        User currentUser = userService.findByEmail(principal.getName())
+                .orElseThrow(() -> new AccessDeniedException("Přihlášený uživatel nebyl nalezen."));
+        Vehicle vehicle = vehicleService.getVehicleById(vehicleId)
+                .orElseThrow(() -> new IllegalArgumentException("Stroj nebyl nalezen."));
+
+        boolean isAdministrator = "ADMIN".equalsIgnoreCase(currentUser.getRole())
+                || "OWNER".equalsIgnoreCase(currentUser.getRole())
+                || "SUPER_ADMIN".equalsIgnoreCase(currentUser.getRole());
+
+        if (!isAdministrator || !vehicle.getCompanyKey().equals(currentUser.getKey())) {
+            throw new AccessDeniedException("Nemáte oprávnění upravovat tento stroj.");
+        }
+
+        return vehicle;
+    }
+
     @ModelAttribute
     public void addCompanyName(Model model,
                                @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
@@ -182,6 +285,10 @@ public class VehicleController {
                 companyService.findByKey(loggedUser.getKey()).ifPresent(company -> {
                     model.addAttribute("companyName", company.getCompanyName());
                 });
+                model.addAttribute(
+                        "workplaceOptions",
+                        workplaceService.getCompanyWorkplaces(loggedUser.getKey())
+                );
             });
         }
     }

@@ -51,6 +51,7 @@
 
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
             <a th:href="@{/daily-check(vehicleId=${dailyCheck.vehicle.id}, mode='create')}"
+               th:if="${user.role == 'ADMIN' || user.role == 'OWNER' || user.role == 'SUPER_ADMIN'}"
                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium text-center">
                 Nová kontrola
             </a>

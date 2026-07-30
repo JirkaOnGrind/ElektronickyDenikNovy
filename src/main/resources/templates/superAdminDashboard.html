@@ -54,15 +54,19 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" th:text="${company.address}"></td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex justify-end space-x-2">
-                                <a th:href="@{/super-admin/switch-company/{id}(id=${company.id})}"
-                                   class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
-                                    Spravovat
-                                </a>
-                                <a th:href="@{/super-admin/delete-company/{id}(id=${company.id})}"
-                                   onclick="return confirm('Opravdu chcete smazat tuto firmu a všechny její uživatele?')"
-                                   class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 shadow-sm transition">
-                                    Smazat
-                                </a>
+                                <form th:action="@{/super-admin/switch-company/{id}(id=${company.id})}" method="post">
+                                    <button type="submit"
+                                            class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
+                                        Spravovat
+                                    </button>
+                                </form>
+                                <form th:action="@{/super-admin/delete-company/{id}(id=${company.id})}" method="post"
+                                      onsubmit="return confirm('Opravdu chcete smazat tuto firmu a všechny její uživatele?')">
+                                    <button type="submit"
+                                            class="inline-flex items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 shadow-sm transition">
+                                        Smazat
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -86,15 +90,19 @@
                     </div>
 
                     <div class="flex gap-2 pt-2">
-                        <a th:href="@{/super-admin/switch-company/{id}(id=${company.id})}"
-                           class="flex-1 inline-flex justify-center items-center px-3 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
-                            Spravovat
-                        </a>
-                        <a th:href="@{/super-admin/delete-company/{id}(id=${company.id})}"
-                           onclick="return confirm('Opravdu chcete smazat tuto firmu?')"
-                           class="inline-flex justify-center items-center px-3 py-2.5 border border-red-200 text-sm font-medium rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition">
-                            Smazat
-                        </a>
+                        <form th:action="@{/super-admin/switch-company/{id}(id=${company.id})}" method="post" class="flex-1">
+                            <button type="submit"
+                                    class="w-full inline-flex justify-center items-center px-3 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
+                                Spravovat
+                            </button>
+                        </form>
+                        <form th:action="@{/super-admin/delete-company/{id}(id=${company.id})}" method="post"
+                              onsubmit="return confirm('Opravdu chcete smazat tuto firmu?')">
+                            <button type="submit"
+                                    class="inline-flex justify-center items-center px-3 py-2.5 border border-red-200 text-sm font-medium rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition">
+                                Smazat
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

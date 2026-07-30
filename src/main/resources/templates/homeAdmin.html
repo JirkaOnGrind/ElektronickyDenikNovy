@@ -78,7 +78,8 @@
             <form th:action="@{/admin/changeKey}" method="post" class="flex flex-col sm:flex-row gap-4 items-end">
                 <div class="w-full">
                     <label for="newKey" class="block text-sm font-medium text-gray-700 mb-1">Nový klíč</label>
-                    <input type="text" id="newKey" name="newKey" required
+                    <input type="password" id="newKey" name="newKey" required minlength="20" maxlength="128"
+                           autocomplete="new-password"
                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                            placeholder="Zadejte nový unikátní klíč">
                 </div>

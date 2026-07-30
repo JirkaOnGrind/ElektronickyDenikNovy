@@ -66,6 +66,8 @@
                 </div>
             </div>
 
+            <div th:replace="~{fragments/workplacePicker :: picker('user-workplace', ${user.workplace})}"></div>
+
             <!-- Row 3: Security (Password) -->
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
@@ -97,5 +99,6 @@
     </div>
 </div>
 <footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+<script th:src="@{/js/workplace-picker.js}"></script>
 </body>
 </html>

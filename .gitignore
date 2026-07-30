@@ -1,9 +1,11 @@
 HELP.md
-.env
+.env*
+!.env.example
 *.log
 jdk-*/
 jdk*.zip
 target/
+.mvn - kopie/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

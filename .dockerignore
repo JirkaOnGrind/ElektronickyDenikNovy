@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.mvn - kopie
+.env
+.env.*
+!.env.example
+*.log
+target
+jdk-*
+jdk*.zip
+android
+assets
+start*.bat
+README*
+DEPLOYMENT.md

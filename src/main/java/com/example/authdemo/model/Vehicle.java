@@ -41,6 +41,9 @@ public class Vehicle {
     @Column(name = "capacity")
     private Double capacity;
 
+    @Column(name = "workplace")
+    private String workplace;
+
     @Column(name = "company_key")
     private String companyKey;
 

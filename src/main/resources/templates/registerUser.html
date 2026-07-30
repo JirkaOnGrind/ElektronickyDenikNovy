@@ -21,7 +21,7 @@
 
         <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Registrace</h1>
 
-        <form action="/auth/registerUser" method="post" class="space-y-5">
+        <form th:action="@{/auth/registerUser}" method="post" class="space-y-5">
             <!-- Jméno -->
             <div>
                 <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">Jméno</label>
@@ -116,7 +116,7 @@
         </form>
 
         <div class="mt-7 text-center">
-            <a href="https://provoznidenik.com" target="_blank" class="text-base font-medium text-orange-500 hover:text-orange-600 transition">
+            <a href="https://provoznidenik.com" target="_blank" rel="noopener noreferrer" class="text-base font-medium text-orange-500 hover:text-orange-600 transition">
                 provoznidenik.com
             </a>
         </div>

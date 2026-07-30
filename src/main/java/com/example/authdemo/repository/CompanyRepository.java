@@ -7,6 +7,7 @@ import java.util.Optional;
 public interface CompanyRepository extends JpaRepository<Company, Long> {
     Optional<Company> findByIco(String ico);
     boolean existsByIco(String ico);
+    boolean existsByCompanyNameIgnoreCase(String companyName);
     Optional<Company> findByKey(String key);
     boolean existsByKey(String key);
     Optional<Company> findByAdmin(Long adminId);

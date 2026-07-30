@@ -13,7 +13,7 @@
             <div class="flex items-center justify-between gap-4">
 
                 <div class="flex items-center gap-4 lg:gap-8">
-                    <a href="https://www.provoznidenik.com" target="_blank"
+                    <a href="https://www.provoznidenik.com" target="_blank" rel="noopener noreferrer"
                        class="text-xl font-bold text-orange-600 hover:text-orange-700 tracking-wide transition flex-shrink-0">
                         provoznidenik.com
                     </a>
@@ -45,9 +45,11 @@
                         </a>
                     </div>
 
-                    <a th:href="@{/logout}" class="hidden md:inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
-                        Odhlásit
-                    </a>
+                    <form th:action="@{/logout}" method="post" class="hidden md:block">
+                        <button type="submit" class="inline-flex items-center justify-center px-4 py-2 text-sm font-bold text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                            Odhlásit
+                        </button>
+                    </form>
 
                     <button id="mobile-menu-btn" class="md:hidden text-gray-700 focus:outline-none p-2 hover:bg-gray-50 rounded-full transition">
                         <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,9 +78,11 @@
                     </div>
                 </a>
 
-                <a th:href="@{/logout}" class="block text-lg font-semibold text-red-600 hover:bg-red-50 px-4 py-3 rounded-lg transition border-t border-gray-100 mt-2">
-                    Odhlásit se
-                </a>
+                <form th:action="@{/logout}" method="post" class="border-t border-gray-100 mt-2">
+                    <button type="submit" class="block w-full text-left text-lg font-semibold text-red-600 hover:bg-red-50 px-4 py-3 rounded-lg transition">
+                        Odhlásit se
+                    </button>
+                </form>
             </div>
         </div>
     </header>

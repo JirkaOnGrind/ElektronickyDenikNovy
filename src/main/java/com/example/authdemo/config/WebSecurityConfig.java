@@ -1,14 +1,21 @@
 package com.example.authdemo.config;
 
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 @Configuration
 public class WebSecurityConfig {
+    private static final Logger log = LoggerFactory.getLogger(WebSecurityConfig.class);
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -16,21 +23,70 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            @Value("${security.remember-me.key:}") String configuredRememberMeKey) throws Exception {
+        String resolvedRememberMeKey = configuredRememberMeKey;
+        if (resolvedRememberMeKey == null || resolvedRememberMeKey.isBlank()) {
+            resolvedRememberMeKey = UUID.randomUUID().toString();
+            log.warn("REMEMBER_ME_KEY není nastaven; používá se dočasný klíč platný pouze do restartu aplikace.");
+        }
+        final String rememberMeKey = resolvedRememberMeKey;
+
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        // Mobilní offline worker neposílá CSRF token. Tento endpoint
+                        // zůstává oddělený; jeho autentizace je samostatný auditní bod.
+                        .ignoringRequestMatchers("/api/sync/**"))
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; "
+                                        + "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+                                        + "https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; "
+                                        + "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                                        + "font-src 'self' https://fonts.gstatic.com data:; "
+                                        + "img-src 'self' data:; connect-src 'self'; "
+                                        + "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
+                                        + "form-action 'self'; upgrade-insecure-requests"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Referrer-Policy", "strict-origin-when-cross-origin"))
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Permissions-Policy", "camera=(), microphone=(), geolocation=()")))
                 .authorizeHttpRequests(auth -> auth
-                        // ... (veřejné endpointy zůstávají) ...
-                        .requestMatchers("/login", "/auth/**", "/register", "/css/**", "/js/**","/register/company","/api/**","/dev/**","/verification","/changePassword", "/auth/verification/**","/newPassword","/privacy").permitAll()
-                        .requestMatchers("/images/**").permitAll()
-                        // Povolit SUPER_ADMIN přístup do jeho sekce
+                        .requestMatchers(
+                                "/login",
+                                "/register",
+                                "/register/company",
+                                "/verification",
+                                "/changePassword",
+                                "/newPassword",
+                                "/privacy",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**"
+                        ).permitAll()
+                        .requestMatchers(
+                                "/auth/registerUser",
+                                "/auth/registerCompany",
+                                "/auth/send-verification",
+                                "/auth/new-password",
+                                "/auth/verification",
+                                "/auth/verification/sendAgain"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/health").permitAll()
+
+                        // Zachováno kvůli existujícímu offline klientovi. Controller
+                        // musí odmítat anonymní nebo neoprávněné požadavky.
+                        .requestMatchers("/api/sync/**").authenticated()
+                        .requestMatchers("/api/offline-vehicles").authenticated()
+
                         .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
 
-                        // Povolit SUPER_ADMIN i do běžné administrace (aby mohl spravovat firmu)
+                        // Správu oprávnění konkrétního stroje může používat i jeho správce.
                         .requestMatchers("/admin/vehicles/**").authenticated()
                         .requestMatchers("/admin/**").hasAnyRole("ADMIN", "OWNER", "SUPER_ADMIN")
 
-                        // Povolit přístup k API vozidel i pro SUPER_ADMIN
+                        .requestMatchers("/vehicles/register").hasAnyRole("ADMIN", "OWNER", "SUPER_ADMIN")
                         .requestMatchers("/vehicles/**").hasAnyRole("ADMIN", "OWNER", "USER", "SUPER_ADMIN")
 
                         .anyRequest().authenticated()
@@ -58,13 +114,15 @@ public class WebSecurityConfig {
                         .permitAll()
                 )
                 .rememberMe(remember -> remember
-                        .key("SuperTajnyKlicKteryNikdoNeuhodne2026") // Pevný klíč, neměnit!
-                        .tokenValiditySeconds(31536000) // 60 * 60 * 24 * 365 = 1 rok
-                        .alwaysRemember(true) // Tohle je trik! Nemusíš pak dávat checkbox do HTML
+                        .key(rememberMeKey)
+                        .tokenValiditySeconds(2592000)
+                        .alwaysRemember(true)
+                        .useSecureCookie(true)
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout=true")
+                        .deleteCookies("JSESSIONID", "remember-me")
                         .permitAll()
                 );
 

@@ -279,16 +279,16 @@
 <script>
     // --- 1. NEJDŘÍV DEFINUJEME FUNKCE PRO MOST ---
     function getStorage(key) {
-        if (window.Android) {
-            const data = window.Android.getData(key);
-            // DEBUG: Abychom viděli, co se děje
-            if (key === 'offline_vehicles') {
-                // alert("DEBUG Android čte: " + data); // Odkomentuj pro ladění
+        try {
+            if (window.Android) {
+                return JSON.parse(window.Android.getData(key) || '[]');
             }
-            return JSON.parse(data);
+            // Fallback pro PC prohlížeč
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        } catch (error) {
+            console.warn('Offline data se nepodařilo načíst.');
+            return [];
         }
-        // Fallback pro PC prohlížeč
-        return JSON.parse(localStorage.getItem(key) || '[]');
     }
 
     function setStorage(key, data) {
@@ -301,7 +301,8 @@
 
     // --- 2. TEPRVE TEĎ NAČÍTÁME DATA ---
     // Používáme naši funkci getStorage(), ne localStorage přímo!
-    const vehicles = getStorage('offline_vehicles');
+    const storedVehicles = getStorage('offline_vehicles');
+    const vehicles = Array.isArray(storedVehicles) ? storedVehicles : [];
     let selectedVehicle = null;
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -322,21 +323,38 @@
         vehicles.forEach(v => {
             const card = document.createElement('div');
             card.className = "bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow border border-gray-100";
-            card.innerHTML = `
-                    <div class="text-center">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-2">${v.name}</h3>
-                        <p class="text-gray-600 mb-4">Evid. číslo: <span class="font-medium">${v.spz || '-'}</span></p>
-                        <button onclick="selectVehicle(${v.id})"
-                           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition inline-block w-full font-bold">
-                            Vybrat tento stroj
-                        </button>
-                    </div>`;
+            const wrapper = document.createElement('div');
+            wrapper.className = 'text-center';
+
+            const title = document.createElement('h3');
+            title.className = 'text-lg font-semibold text-gray-800 mb-2';
+            title.textContent = v.name || '';
+
+            const identifier = document.createElement('p');
+            identifier.className = 'text-gray-600 mb-4';
+            identifier.append('Evid. číslo: ');
+            const identifierValue = document.createElement('span');
+            identifierValue.className = 'font-medium';
+            identifierValue.textContent = v.spz || '-';
+            identifier.appendChild(identifierValue);
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition inline-block w-full font-bold';
+            button.textContent = 'Vybrat tento stroj';
+            button.addEventListener('click', () => selectVehicle(v.id));
+
+            wrapper.append(title, identifier, button);
+            card.appendChild(wrapper);
             grid.appendChild(card);
         });
     }
 
     function selectVehicle(id) {
-        selectedVehicle = vehicles.find(v => v.id === id);
+        selectedVehicle = vehicles.find(v => String(v.id) === String(id));
+        if (!selectedVehicle) {
+            return;
+        }
         document.getElementById('dash-title').innerText = selectedVehicle.name;
         document.getElementById('dash-spz').innerText = selectedVehicle.spz || '';
         switchView('view-dashboard');

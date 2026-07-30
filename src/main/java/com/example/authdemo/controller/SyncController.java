@@ -13,7 +13,10 @@ import com.example.authdemo.service.MaintenanceService;
 import com.example.authdemo.service.RevisionService;
 import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +34,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/sync")
 public class SyncController {
+    private static final Logger log = LoggerFactory.getLogger(SyncController.class);
+
     @Autowired
     private UserService userService;
 
@@ -68,6 +73,9 @@ public class SyncController {
 
     @PostMapping("/daily-check")
     public ResponseEntity<?> syncDailyCheck(@RequestBody DailyCheckForm form, Principal principal) {
+        if (form == null || form.getVehicleId() == null || form.getOverallResult() == null) {
+            return ResponseEntity.badRequest().body("Invalid sync payload");
+        }
         return processSync(principal, form.getVehicleId(), (user, vehicle) -> {
             DailyCheck check = new DailyCheck();
             check.setCheckDate(form.getCheckDate());
@@ -75,12 +83,15 @@ public class SyncController {
             check.setDefectsDescription(form.getDefectsDescription());
             check.setUser(user);
             check.setVehicle(vehicle);
-            dailyCheckService.saveDailyCheck(check);
+            dailyCheckService.saveDailyCheckIfAbsent(check);
         });
     }
 
     @PostMapping("/maintenance")
     public ResponseEntity<?> syncMaintenance(@RequestBody MaintenanceForm form, Principal principal) {
+        if (form == null || form.getVehicleId() == null || form.getResult() == null) {
+            return ResponseEntity.badRequest().body("Invalid sync payload");
+        }
         return processSync(principal, form.getVehicleId(), (user, vehicle) -> {
             MaintenanceRecord record = new MaintenanceRecord();
             record.setMaintenanceDate(form.getMaintenanceDate());
@@ -95,6 +106,10 @@ public class SyncController {
 
     @PostMapping("/revision")
     public ResponseEntity<?> syncRevision(@RequestBody RevisionForm form, Principal principal) {
+        if (form == null || form.getVehicleId() == null
+                || form.getResult() == null || form.getFrequency() == null) {
+            return ResponseEntity.badRequest().body("Invalid sync payload");
+        }
         return processSync(principal, form.getVehicleId(), (user, vehicle) -> {
             Revision revision = new Revision();
             revision.setRevisionDate(form.getRevisionDate());
@@ -108,19 +123,27 @@ public class SyncController {
     }
 
     private ResponseEntity<?> processSync(Principal principal, Long vehicleId, SyncAction action) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         Optional<User> userOpt = userService.findByEmail(principal.getName());
         Optional<Vehicle> vehicleOpt = vehicleService.getVehicleById(vehicleId);
 
         if (userOpt.isEmpty() || vehicleOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("User or Vehicle not found");
+            return ResponseEntity.badRequest().body("Invalid sync target");
+        }
+
+        if (!vehicleService.canAccessVehicle(userOpt.get(), vehicleOpt.get())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         try {
             action.execute(userOpt.get(), vehicleOpt.get());
             return ResponseEntity.ok("Synced");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        } catch (RuntimeException ex) {
+            log.error("Offline sync failed type={}", ex.getClass().getSimpleName());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Sync failed");
         }
     }
 

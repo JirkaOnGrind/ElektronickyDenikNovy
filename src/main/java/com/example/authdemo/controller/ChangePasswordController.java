@@ -31,16 +31,15 @@ public class ChangePasswordController {
     @PostMapping("/auth/send-verification")
     public String changePasswordRequest(@RequestParam String email, Model model, HttpSession session) {
         Optional<User> user = userService.findByEmail(email);
-        if (user.isEmpty()) {
-            model.addAttribute("pageTitle", "Reset hesla");
-            model.addAttribute("submittedEmail", email);
-            model.addAttribute("error", "Tento e-mail není v systému registrovaný.");
-            return "changePassword";
+        if (user.isPresent()) {
+            emailService.sendVerificationEmailViaEmail(email);
         }
 
-        emailService.sendVerificationEmailViaEmail(email);
         session.setAttribute("verificationType", "PASSWORD_RESET");
         session.setAttribute("email", email);
+        session.setAttribute("verificationAttempts", 0);
+        session.setAttribute("verificationIssuedAt", System.currentTimeMillis());
+        session.setMaxInactiveInterval(15 * 60);
         return "redirect:/verification";
     }
 
@@ -72,6 +71,10 @@ public class ChangePasswordController {
 
         if (!newPassword.equals(confirmPassword)) {
             model.addAttribute("error", "Hesla se neshodují.");
+            return "newPassword";
+        }
+        if (!userService.isPasswordAcceptable(newPassword)) {
+            model.addAttribute("error", "Heslo musí mít alespoň 12 znaků.");
             return "newPassword";
         }
 

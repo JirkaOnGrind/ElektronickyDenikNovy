@@ -2,6 +2,7 @@ package com.jirka.denik;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.webkit.CookieManager;
 import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -35,6 +36,11 @@ public class SyncWorker extends Worker {
 
         if (queue == null || queue.isEmpty()) return Result.success();
 
+        String cookies = CookieManager.getInstance().getCookie(SERVER_URL);
+        if (cookies == null || cookies.isBlank()) {
+            return Result.retry();
+        }
+
         List<Map<String, Object>> failedItems = new ArrayList<>();
 
         for (Map<String, Object> item : queue) {
@@ -48,7 +54,7 @@ public class SyncWorker extends Worker {
                 else if ("REVISION".equals(type)) endpoint = "/api/sync/revision";
 
                 if (!endpoint.isEmpty()) {
-                    if (!sendPost(SERVER_URL + endpoint, gson.toJson(payload))) {
+                    if (!sendPost(SERVER_URL + endpoint, gson.toJson(payload), cookies)) {
                         failedItems.add(item);
                     }
                 }
@@ -62,19 +68,30 @@ public class SyncWorker extends Worker {
         return failedItems.isEmpty() ? Result.success() : Result.retry();
     }
 
-    private boolean sendPost(String urlString, String json) {
+    private boolean sendPost(String urlString, String json, String cookies) {
+        HttpURLConnection conn = null;
         try {
             URL url = new URL(urlString);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "application/json, text/plain");
+            conn.setRequestProperty("Cookie", cookies);
+            conn.setConnectTimeout(15_000);
+            conn.setReadTimeout(20_000);
+            conn.setInstanceFollowRedirects(false);
             conn.setDoOutput(true);
             try (OutputStream os = conn.getOutputStream()) {
                 os.write(json.getBytes(StandardCharsets.UTF_8));
             }
-            return conn.getResponseCode() >= 200 && conn.getResponseCode() < 300;
+            int responseCode = conn.getResponseCode();
+            return responseCode >= 200 && responseCode < 300;
         } catch (Exception e) {
             return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
     }
 }

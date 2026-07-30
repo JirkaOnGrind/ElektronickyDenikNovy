@@ -24,7 +24,7 @@
             <span class="block sm:inline" th:text="${error}"></span>
         </div>
 
-        <form action="/vehicles/register" method="post" class="px-6 py-6 space-y-6">
+        <form th:action="@{/vehicles/register}" method="post" class="px-6 py-6 space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Kategorie stroje</label>
@@ -66,7 +66,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="capacity" class="block text-sm font-medium text-gray-700 mb-1">Nosnost (kg)</label>
-                    <input type="number" id="capacity" name="capacity" step="0.1"
+                    <input type="number" id="capacity" name="capacity" step="0.1" min="0"
                            class="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition"
                            placeholder="Např. 2500">
                     <p class="text-xs text-gray-500 mt-1">Volitelné pole.</p>
@@ -80,6 +80,8 @@
                     <p class="text-xs text-gray-500 mt-1">Volitelné pole.</p>
                 </div>
             </div>
+
+            <div th:replace="~{fragments/workplacePicker :: picker('vehicle-workplace', null)}"></div>
 
             <div class="flex items-center justify-end gap-4 pt-4 border-t border-gray-100">
                 <a th:href="@{/admin/machines}" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded hover:bg-gray-100 transition">
@@ -98,5 +100,6 @@
 </div>
 
 <footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+<script th:src="@{/js/workplace-picker.js}"></script>
 </body>
 </html>

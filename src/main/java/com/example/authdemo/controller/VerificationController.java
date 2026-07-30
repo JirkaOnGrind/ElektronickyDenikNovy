@@ -12,6 +12,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class VerificationController {
+    private static final long VERIFICATION_VALIDITY_MILLIS = 15 * 60 * 1000L;
+    private static final long RESEND_COOLDOWN_MILLIS = 60 * 1000L;
+    private static final int MAX_RESENDS_PER_SESSION = 5;
+
     @Autowired
     UserService userService;
     private final EmailService emailService;
@@ -24,7 +28,7 @@ public class VerificationController {
     public String verificationForm(Model model, HttpSession session) {
         Long userId = (Long) session.getAttribute("pendingVerificationUserId");
         String verificationType = (String) session.getAttribute("verificationType");
-        if (userId == null && !verificationType.equals("PASSWORD_RESET")) {
+        if (userId == null && !"PASSWORD_RESET".equals(verificationType)) {
             return "redirect:/register";
         }
         model.addAttribute("pageTitle", "Verifikace");
@@ -36,8 +40,19 @@ public class VerificationController {
         String email = (String) session.getAttribute("email");
         Long userId = (Long) session.getAttribute("pendingVerificationUserId");
 
-        if (userId == null && !verificationType.equals("PASSWORD_RESET")) {
+        if (userId == null && !"PASSWORD_RESET".equals(verificationType)) {
             return "redirect:/register";
+        }
+
+        Long issuedAt = (Long) session.getAttribute("verificationIssuedAt");
+        if (issuedAt == null || System.currentTimeMillis() - issuedAt > VERIFICATION_VALIDITY_MILLIS) {
+            session.removeAttribute("verificationType");
+            session.removeAttribute("email");
+            session.removeAttribute("pendingVerificationUserId");
+            session.removeAttribute("verificationAttempts");
+            model.addAttribute("pageTitle", "Verifikace");
+            model.addAttribute("error", "Ověřovací kód vypršel. Vyžádejte si nový kód.");
+            return "verificationEmail";
         }
 
         // Načtení počtu pokusů
@@ -72,9 +87,9 @@ public class VerificationController {
 
         // Ověření kódu
         boolean verified = false;
-        if ("PASSWORD_RESET".equals(verificationType)) {
+        if (code != null && code.matches("\\d{6}") && "PASSWORD_RESET".equals(verificationType)) {
             verified = emailService.checkVerificationCodeViaEmail(email, code);
-        } else if (userId != null) {
+        } else if (code != null && code.matches("\\d{6}") && userId != null) {
             verified = emailService.checkVerificationCode(userId, code);
         }
 
@@ -110,13 +125,32 @@ public class VerificationController {
         }
     }
 
-    @GetMapping("/auth/verification/sendAgain")
+    @PostMapping("/auth/verification/sendAgain")
     public String sendVerifyCodeAgain(HttpSession session, Model model) {
         Long userId = (Long) session.getAttribute("pendingVerificationUserId");
         String verificationType = (String) session.getAttribute("verificationType");
         String email = (String) session.getAttribute("email");
+
+        long now = System.currentTimeMillis();
+        Long lastResendAt = (Long) session.getAttribute("verificationResendAt");
+        Integer resendCount = (Integer) session.getAttribute("verificationResendCount");
+        resendCount = resendCount == null ? 0 : resendCount;
+
+        if (lastResendAt != null && now - lastResendAt < RESEND_COOLDOWN_MILLIS) {
+            model.addAttribute("pageTitle", "Verifikace");
+            model.addAttribute("error", "Další kód lze odeslat nejdříve za jednu minutu.");
+            return "verificationEmail";
+        }
+        if (resendCount >= MAX_RESENDS_PER_SESSION) {
+            model.addAttribute("pageTitle", "Verifikace");
+            model.addAttribute("error", "Byl dosažen limit opakovaného odeslání kódu.");
+            return "verificationEmail";
+        }
+
         if ("PASSWORD_RESET".equals(verificationType)) {
-            System.out.println("PASSWORD RESET ----------------------------------------");
+            if (email == null) {
+                return "redirect:/login";
+            }
             emailService.sendVerificationEmailViaEmail(email);
         } else if (userId != null) {
             emailService.sendVerificationEmailViaId(userId);
@@ -125,6 +159,10 @@ public class VerificationController {
         {
             return "redirect:/login";
         }
+        session.setAttribute("verificationIssuedAt", now);
+        session.setAttribute("verificationResendAt", now);
+        session.setAttribute("verificationResendCount", resendCount + 1);
+        session.setAttribute("verificationAttempts", 0);
         model.addAttribute("sendAgain", "Kód byl odeslán znovu na váš email.");
         return "verificationEmail";
     }

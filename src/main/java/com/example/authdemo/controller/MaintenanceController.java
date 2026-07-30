@@ -59,17 +59,14 @@ public class MaintenanceController {
         User user = userOpt.get();
         Vehicle vehicle = vehicleOpt.get();
 
+        if (!vehicleService.canAccessVehicle(user, vehicle)) {
+            return "redirect:/vehicles/list?error=access_denied";
+        }
+
         companyService.findByKey(user.getKey())
                 .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
 
-        boolean isGlobalAdminOrOwner = "ADMIN".equals(user.getRole())
-                || "OWNER".equals(user.getRole())
-                || "SUPER_ADMIN".equals(user.getRole());
-
-        boolean isVehicleAdmin = vehicle.getVehicleAdmins().stream()
-                .anyMatch(admin -> admin.getId().equals(user.getId()));
-
-        boolean canViewHistory = isGlobalAdminOrOwner || isVehicleAdmin;
+        boolean canViewHistory = vehicleService.canManageVehicle(user, vehicle);
         model.addAttribute("canViewHistory", canViewHistory);
 
         if (canViewHistory && !"create".equals(mode)) {
@@ -110,9 +107,13 @@ public class MaintenanceController {
             return "redirect:/login";
         }
 
-        Optional<Vehicle> vehicle = vehicleService.getVehicleById(form.getVehicleId());
-        if (vehicle.isEmpty()) {
+        Optional<Vehicle> vehicleOpt = vehicleService.getVehicleById(form.getVehicleId());
+        if (vehicleOpt.isEmpty()) {
             return "redirect:/vehicles/list?error=vehicle_not_found";
+        }
+
+        if (!vehicleService.canAccessVehicle(user.get(), vehicleOpt.get())) {
+            return "redirect:/vehicles/list?error=access_denied";
         }
 
         MaintenanceRecord record = new MaintenanceRecord();
@@ -121,7 +122,7 @@ public class MaintenanceController {
         record.setResult(form.getResult());
         record.setDescription(form.getDescription());
         record.setUser(user.get());
-        record.setVehicle(vehicle.get());
+        record.setVehicle(vehicleOpt.get());
 
         maintenanceService.save(record);
 
@@ -130,27 +131,28 @@ public class MaintenanceController {
 
     @GetMapping("/success")
     public String showSuccessPage(@RequestParam Long recordId, Model model, Principal principal) {
-        if (principal != null) {
-            Optional<User> userOpt = userService.findByEmail(principal.getName());
-            userOpt.ifPresent(u -> model.addAttribute("user", u));
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                model.addAttribute("user", user);
-                companyService.findByKey(user.getKey())
-                        .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
-            }
+        Optional<User> userOpt = principal == null
+                ? Optional.empty()
+                : userService.findByEmail(principal.getName());
+        if (userOpt.isEmpty()) {
+            return "redirect:/login";
         }
 
         Optional<MaintenanceRecord> recordOpt = maintenanceService.findById(recordId);
-        if (recordOpt.isPresent()) {
-            MaintenanceRecord record = recordOpt.get();
-            model.addAttribute("record", record);
-            model.addAttribute("maintenance", record);
-            model.addAttribute("vehicle", record.getVehicle());
-            model.addAttribute("pageTitle", "Údržba uložena");
-        } else {
-            return "redirect:/error";
+        if (recordOpt.isEmpty()
+                || !vehicleService.canAccessVehicle(userOpt.get(), recordOpt.get().getVehicle())) {
+            return "redirect:/vehicles/list?error=access_denied";
         }
+
+        User user = userOpt.get();
+        MaintenanceRecord record = recordOpt.get();
+        model.addAttribute("user", user);
+        companyService.findByKey(user.getKey())
+                .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
+        model.addAttribute("record", record);
+        model.addAttribute("maintenance", record);
+        model.addAttribute("vehicle", record.getVehicle());
+        model.addAttribute("pageTitle", "Údržba uložena");
 
         return "maintenance-success";
     }

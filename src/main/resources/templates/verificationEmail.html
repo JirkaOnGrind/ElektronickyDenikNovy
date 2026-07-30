@@ -36,9 +36,11 @@
                 <span th:if="${sendAgain}">
                     <span class="text-gray-400 font-medium underline cursor-not-allowed">Poslat znovu</span>
                 </span>
-                <a th:if="${sendAgain == null}" th:href="@{/auth/verification/sendAgain}" class="text-blue-600 hover:text-blue-800 font-medium underline">
+                <button th:if="${sendAgain == null}" type="submit"
+                        th:formaction="@{/auth/verification/sendAgain}" formmethod="post"
+                        class="text-blue-600 hover:text-blue-800 font-medium underline">
                     Poslat znovu
-                </a>
+                </button>
             </p>
             <p th:if="${sendAgain}" class="text-green-600 text-sm mt-2" th:text="${sendAgain}"></p>
 

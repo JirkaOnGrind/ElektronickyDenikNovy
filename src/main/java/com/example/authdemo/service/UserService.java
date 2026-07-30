@@ -5,6 +5,8 @@ import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.CompanyRepository;
 import com.example.authdemo.repository.UserRepository;
 import com.example.authdemo.repository.VehicleRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,12 +16,20 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class UserService implements UserDetailsService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+    private static final Set<String> EDITABLE_ROLES = Set.of("USER", "ADMIN", "OWNER");
+    private static final int MINIMUM_PASSWORD_LENGTH = 12;
+    private static final int MAXIMUM_BCRYPT_PASSWORD_BYTES = 72;
+
     @Autowired
     CompanyService companyService;
 
@@ -37,18 +47,16 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        System.out.println("Spring Security hleda uzivatele: " + username);
-
         Optional<User> dbUser = userRepository.findByEmailAndDeletedAtIsNull(username);
         if (dbUser.isEmpty()) {
-            throw new UsernameNotFoundException("User not found: " + username);
+            throw new UsernameNotFoundException("User not found");
         }
 
         User user = dbUser.get();
 
         if (!user.isVerificated()) {
-            System.out.println("Pokus o prihlaseni neovereneho uzivatele: " + username);
-            throw new DisabledException("User is not verified: " + username);
+            log.warn("Login rejected for an unverified account.");
+            throw new DisabledException("User is not verified");
         }
 
         return org.springframework.security.core.userdetails.User.builder()
@@ -59,13 +67,16 @@ public class UserService implements UserDetailsService {
     }
 
     public String registerUser(User user) {
-        System.out.println("Register pro uzivatele: " + user.getEmail());
+        if (!isPasswordAcceptable(user.getPassword())) {
+            return "weak_password";
+        }
 
         user.setEmail(normalizeRequiredText(user.getEmail()));
         user.setFirstName(normalizeRequiredText(user.getFirstName()));
         user.setLastName(normalizeRequiredText(user.getLastName()));
         user.setKey(normalizeRequiredText(user.getKey()));
         user.setPhone(normalizeOptionalText(user.getPhone()));
+        user.setWorkplace(normalizeOptionalText(user.getWorkplace()));
 
         Optional<User> existingUserByEmail = userRepository.findByEmailAndDeletedAtIsNull(user.getEmail());
         if (existingUserByEmail.isPresent()) {
@@ -111,18 +122,26 @@ public class UserService implements UserDetailsService {
         return userRepository.findByPhoneAndDeletedAtIsNull(phone);
     }
 
+    public List<User> findActiveUsersByCompanyKey(String companyKey) {
+        return userRepository.findByKeyAndDeletedAtIsNull(companyKey);
+    }
+
     @Transactional
     public void deleteUserAndRelatedData(Long userId) {
         try {
             companyService.deleteCompanyByUserId(userId);
             softDelete(userId);
-            System.out.println("User and related data smazany pro userId: " + userId);
+            log.info("Unverified user cleanup completed.");
         } catch (Exception e) {
-            System.err.println("Chyba pri mazani usera a related data: " + e.getMessage());
+            log.error("Unverified user cleanup failed: {}", e.getClass().getSimpleName());
         }
     }
 
     public Optional<User> changePassword(String email, String newPassword) {
+        if (!isPasswordAcceptable(newPassword)) {
+            return Optional.empty();
+        }
+
         Optional<User> userOpt = userRepository.findByEmailAndDeletedAtIsNull(email);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
@@ -171,10 +190,35 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid user Id:" + id));
 
+        return updateUser(
+                id,
+                firstName,
+                lastName,
+                email,
+                phone,
+                user.getRole(),
+                user.getWorkplace(),
+                newPassword
+        );
+    }
+
+    public String updateUser(Long id,
+                             String firstName,
+                             String lastName,
+                             String email,
+                             String phone,
+                             String role,
+                             String workplace,
+                             String newPassword) {
+        User user = userRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid user Id:" + id));
+
         String normalizedFirstName = normalizeRequiredText(firstName);
         String normalizedLastName = normalizeRequiredText(lastName);
         String normalizedEmail = normalizeRequiredText(email);
         String normalizedPhone = normalizeOptionalText(phone);
+        String normalizedRole = normalizeRequiredText(role);
+        String normalizedWorkplace = normalizeOptionalText(workplace);
         String normalizedPassword = normalizeOptionalText(newPassword);
 
         if (normalizedFirstName == null || normalizedFirstName.isBlank()
@@ -183,7 +227,17 @@ public class UserService implements UserDetailsService {
             return "missing_required_fields";
         }
 
-        Optional<User> userWithEmail = userRepository.findByEmailAndDeletedAtIsNull(normalizedEmail);
+        if (normalizedRole == null || !EDITABLE_ROLES.contains(normalizedRole.toUpperCase())) {
+            return "invalid_role";
+        }
+
+        normalizedRole = normalizedRole.toUpperCase();
+
+        if (normalizedPassword != null && !isPasswordAcceptable(normalizedPassword)) {
+            return "weak_password";
+        }
+
+        Optional<User> userWithEmail = userRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(normalizedEmail);
         if (userWithEmail.isPresent() && !userWithEmail.get().getId().equals(user.getId())) {
             return "email_exists";
         }
@@ -199,6 +253,8 @@ public class UserService implements UserDetailsService {
         user.setLastName(normalizedLastName);
         user.setEmail(normalizedEmail);
         user.setPhone(normalizedPhone);
+        user.setRole(normalizedRole);
+        user.setWorkplace(normalizedWorkplace);
 
         if (normalizedPassword != null) {
             user.setPassword(passwordEncoder.encode(normalizedPassword));
@@ -206,6 +262,13 @@ public class UserService implements UserDetailsService {
 
         userRepository.save(user);
         return "success";
+    }
+
+    public boolean isPasswordAcceptable(String password) {
+        if (password == null || password.length() < MINIMUM_PASSWORD_LENGTH) {
+            return false;
+        }
+        return password.getBytes(StandardCharsets.UTF_8).length <= MAXIMUM_BCRYPT_PASSWORD_BYTES;
     }
 
     private String buildArchivedValue(String originalValue, Long id, LocalDateTime deletedAt, String prefix) {

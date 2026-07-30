@@ -48,14 +48,13 @@ public class RevisionController {
         User user = userOpt.get();
         Vehicle vehicle = vehicleOpt.get();
 
+        if (!vehicleService.canAccessVehicle(user, vehicle)) {
+            return "redirect:/vehicles/list?error=access_denied";
+        }
+
         companyService.findByKey(user.getKey())
                 .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
-        // ------------------------------------------------
-        // Oprávnění
-        boolean isGlobalAdminOrOwner = "ADMIN".equals(user.getRole()) || "OWNER".equals(user.getRole()) || "SUPER_ADMIN".equals(user.getRole());
-        boolean isVehicleAdmin = vehicle.getVehicleAdmins().stream()
-                .anyMatch(admin -> admin.getId().equals(user.getId()));
-        boolean canViewHistory = isGlobalAdminOrOwner || isVehicleAdmin;
+        boolean canViewHistory = vehicleService.canManageVehicle(user, vehicle);
 
         model.addAttribute("canViewHistory", canViewHistory);
 
@@ -93,8 +92,11 @@ public class RevisionController {
     public String processRevision(@ModelAttribute RevisionForm form, Principal principal) {
         Optional<User> user = userService.findByEmail(principal.getName());
         if (user.isEmpty()) return "redirect:/login";
-        Optional<Vehicle> vehicle = vehicleService.getVehicleById(form.getVehicleId());
-        if (vehicle.isEmpty()) return "redirect:/vehicles/list";
+        Optional<Vehicle> vehicleOpt = vehicleService.getVehicleById(form.getVehicleId());
+        if (vehicleOpt.isEmpty()) return "redirect:/vehicles/list";
+        if (!vehicleService.canAccessVehicle(user.get(), vehicleOpt.get())) {
+            return "redirect:/vehicles/list?error=access_denied";
+        }
 
         Revision revision = new Revision();
         revision.setRevisionDate(form.getRevisionDate());
@@ -103,7 +105,7 @@ public class RevisionController {
         revision.setResult(form.getResult());
         revision.setDescription(form.getDescription());
         revision.setUser(user.get()); // Automaticky se uloží přihlášený uživatel
-        revision.setVehicle(vehicle.get());
+        revision.setVehicle(vehicleOpt.get());
 
         revisionService.save(revision);
 
@@ -112,30 +114,28 @@ public class RevisionController {
 
     @GetMapping("/success")
     public String showSuccessPage(@RequestParam Long revisionId, Model model, Principal principal) {
-        if (principal != null) {
-            userService.findByEmail(principal.getName()).ifPresent(u -> model.addAttribute("user", u));
-            Optional<User> userOpt = userService.findByEmail(principal.getName());
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                model.addAttribute("user", user);
-
-                // --- TOTO TI CHYBĚLO PRO HEADER ---
-                companyService.findByKey(user.getKey())
-                        .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
-                // ----------------------------------
-            }
+        Optional<User> userOpt = principal == null
+                ? Optional.empty()
+                : userService.findByEmail(principal.getName());
+        if (userOpt.isEmpty()) {
+            return "redirect:/login";
         }
+
         Optional<Revision> revisionOpt = revisionService.findById(revisionId);
-        if (revisionOpt.isPresent()) {
-            Revision revision = revisionOpt.get();
-            model.addAttribute("revision", revision);
-
-            // --- PŘIDÁNO: ID vozidla pro tlačítko "Domů" ---
-            model.addAttribute("vehicleId", revision.getVehicle().getId());
-            // -----------------------------------------------
-
-            model.addAttribute("pageTitle", "Revize uložena");
+        if (revisionOpt.isEmpty()
+                || !vehicleService.canAccessVehicle(userOpt.get(), revisionOpt.get().getVehicle())) {
+            return "redirect:/vehicles/list?error=access_denied";
         }
+
+        User user = userOpt.get();
+        Revision revision = revisionOpt.get();
+        model.addAttribute("user", user);
+        companyService.findByKey(user.getKey())
+                .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
+        model.addAttribute("revision", revision);
+        model.addAttribute("vehicleId", revision.getVehicle().getId());
+        model.addAttribute("pageTitle", "Revize uložena");
+
         return "revision-success";
     }
 }

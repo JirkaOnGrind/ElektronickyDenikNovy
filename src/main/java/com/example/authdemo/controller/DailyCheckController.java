@@ -38,7 +38,7 @@ public class DailyCheckController {
     @Autowired
     private UserService userService;
 
-    @GetMapping
+    @GetMapping({"", "/form"})
     public String showDailyCheckForm(@RequestParam(value = "vehicleId") Long vehicleId,
                                      @RequestParam(value = "startDate", required = false) LocalDate startDate,
                                      @RequestParam(value = "endDate", required = false) LocalDate endDate,
@@ -59,18 +59,18 @@ public class DailyCheckController {
         User user = userOpt.get();
         Vehicle vehicle = vehicleOpt.get();
 
+        if (!vehicleService.canAccessVehicle(user, vehicle)) {
+            return "redirect:/vehicles/list?error=access_denied";
+        }
+
         companyService.findByKey(user.getKey())
                 .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
 
-        boolean isGlobalAdminOrOwner = "ADMIN".equals(user.getRole())
-                || "OWNER".equals(user.getRole())
-                || "SUPER_ADMIN".equals(user.getRole());
-
-        boolean isVehicleAdmin = vehicle.getVehicleAdmins().stream()
-                .anyMatch(admin -> admin.getId().equals(user.getId()));
-
-        boolean canViewHistory = isGlobalAdminOrOwner || isVehicleAdmin;
+        boolean canViewHistory = vehicleService.canManageVehicle(user, vehicle);
+        boolean dailyCheckCompletedToday =
+                dailyCheckService.existsDailyCheckForVehicleToday(vehicle.getId());
         model.addAttribute("canViewHistory", canViewHistory);
+        model.addAttribute("dailyCheckCompletedToday", dailyCheckCompletedToday);
 
         if (canViewHistory && !"create".equals(mode)) {
             if (startDate == null) {
@@ -109,45 +109,61 @@ public class DailyCheckController {
             return "redirect:/login";
         }
 
-        Optional<Vehicle> vehicle = vehicleService.getVehicleById(form.getVehicleId());
-        if (vehicle.isEmpty()) {
+        Optional<Vehicle> vehicleOpt = vehicleService.getVehicleById(form.getVehicleId());
+        if (vehicleOpt.isEmpty()) {
             return "redirect:/vehicles/list?error=vehicle_not_found";
         }
 
+        if (!vehicleService.canAccessVehicle(user.get(), vehicleOpt.get())) {
+            return "redirect:/vehicles/list?error=access_denied";
+        }
+
+        LocalDate checkDate = form.getCheckDate() != null ? form.getCheckDate() : LocalDate.now();
+
         DailyCheck dailyCheck = new DailyCheck();
-        dailyCheck.setCheckDate(form.getCheckDate() != null ? form.getCheckDate() : LocalDate.now());
+        dailyCheck.setCheckDate(checkDate);
         dailyCheck.setOverallResult(form.getOverallResult());
         dailyCheck.setDefectsDescription(form.getDefectsDescription());
         dailyCheck.setUser(user.get());
-        dailyCheck.setVehicle(vehicle.get());
+        dailyCheck.setVehicle(vehicleOpt.get());
 
-        dailyCheckService.saveDailyCheck(dailyCheck);
+        Optional<DailyCheck> savedCheck = dailyCheckService.saveDailyCheckIfAbsent(dailyCheck);
+        if (savedCheck.isEmpty()) {
+            return redirectToAlreadyCompleted(vehicleOpt.get().getId());
+        }
 
-        return "redirect:/daily-check/success?checkId=" + dailyCheck.getId();
+        return "redirect:/daily-check/success?checkId=" + savedCheck.get().getId();
     }
 
     @GetMapping("/success")
     public String showSuccessPage(@RequestParam Long checkId, Model model, Principal principal) {
-        if (principal != null) {
-            Optional<User> userOpt = userService.findByEmail(principal.getName());
-            userOpt.ifPresent(user -> model.addAttribute("user", user));
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                model.addAttribute("user", user);
-                companyService.findByKey(user.getKey())
-                        .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
-            }
+        Optional<User> userOpt = principal == null
+                ? Optional.empty()
+                : userService.findByEmail(principal.getName());
+        if (userOpt.isEmpty()) {
+            return "redirect:/login";
         }
 
-        Optional<DailyCheck> dailyCheck = dailyCheckService.getDailyCheckById(checkId);
-        if (dailyCheck.isPresent()) {
-            DailyCheck check = dailyCheck.get();
-            model.addAttribute("dailyCheck", check);
-            model.addAttribute("vehicleId", check.getVehicle().getId());
-            model.addAttribute("pageTitle", "Kontrola uložena");
-            model.addAttribute("STAV", DailyCheck.Stav.class);
+        Optional<DailyCheck> dailyCheckOpt = dailyCheckService.getDailyCheckById(checkId);
+        if (dailyCheckOpt.isEmpty()
+                || !vehicleService.canAccessVehicle(userOpt.get(), dailyCheckOpt.get().getVehicle())) {
+            return "redirect:/vehicles/list?error=access_denied";
         }
+
+        User user = userOpt.get();
+        DailyCheck check = dailyCheckOpt.get();
+        model.addAttribute("user", user);
+        companyService.findByKey(user.getKey())
+                .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
+        model.addAttribute("dailyCheck", check);
+        model.addAttribute("vehicleId", check.getVehicle().getId());
+        model.addAttribute("pageTitle", "Kontrola uložena");
+        model.addAttribute("STAV", DailyCheck.Stav.class);
 
         return "daily-check-success";
+    }
+
+    private String redirectToAlreadyCompleted(Long vehicleId) {
+        return "redirect:/home?vehicleId=" + vehicleId + "&dailyCheckAlreadyCompleted=true";
     }
 }

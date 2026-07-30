@@ -6,6 +6,8 @@ import com.example.authdemo.repository.UserRepository;
 import com.example.authdemo.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.security.Principal;
@@ -17,6 +19,8 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class VehicleService {
+    private static final Logger log = LoggerFactory.getLogger(VehicleService.class);
+
     @Autowired
     private final UserService userService;
 
@@ -31,16 +35,14 @@ public class VehicleService {
         vehicle.setType(Vehicle.cleanText(vehicle.getType()));
         vehicle.setSerialNumber(Vehicle.cleanText(vehicle.getSerialNumber()));
         vehicle.setRegistrationNumber(Vehicle.cleanText(vehicle.getRegistrationNumber()));
-
-        System.out.println("Registrace voziku: " + vehicle.getDisplayNameWithSerial());
+        vehicle.setWorkplace(Vehicle.cleanText(vehicle.getWorkplace()));
 
         if (vehicle.getSerialNumber() != null && vehicleRepository.existsBySerialNumberAndDeletedAtIsNull(vehicle.getSerialNumber())) {
-            System.out.println("Vyrobni cislo jiz existuje: " + vehicle.getSerialNumber());
             return false;
         }
 
         vehicleRepository.save(vehicle);
-        System.out.println("Vozik uspesne zaregistrovan: " + vehicle.getDisplayNameWithSerial());
+        log.info("Vehicle registration completed.");
         return true;
     }
 
@@ -64,6 +66,24 @@ public class VehicleService {
 
     public Optional<Vehicle> getVehicleBySerialNumber(String serialNumber) {
         return vehicleRepository.findBySerialNumberAndDeletedAtIsNull(serialNumber);
+    }
+
+    public boolean canAccessVehicle(User user, Vehicle vehicle) {
+        if (user == null || vehicle == null || !vehicle.getCompanyKey().equals(user.getKey())) {
+            return false;
+        }
+
+        return isGlobalAdministrator(user)
+                || containsUser(vehicle.getAllowedUsers(), user)
+                || containsUser(vehicle.getVehicleAdmins(), user);
+    }
+
+    public boolean canManageVehicle(User user, Vehicle vehicle) {
+        if (user == null || vehicle == null || !vehicle.getCompanyKey().equals(user.getKey())) {
+            return false;
+        }
+
+        return isGlobalAdministrator(user) || containsUser(vehicle.getVehicleAdmins(), user);
     }
 
     public List<Vehicle> getVehiclesForUser(User user) {
@@ -108,7 +128,7 @@ public class VehicleService {
             vehicle.setSerialNumber(buildArchivedSerialNumber(vehicle.getSerialNumber(), vehicle.getId(), deletedAt));
         }
         vehicleRepository.save(vehicle);
-        System.out.println("Vozidlo s ID " + vehicleId + " bylo smazano.");
+        log.info("Vehicle soft deletion completed.");
     }
 
     public String updateVehicleBySuperAdmin(Long vehicleId,
@@ -121,13 +141,41 @@ public class VehicleService {
         Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));
 
+        return updateVehicle(
+                vehicleId,
+                brand,
+                type,
+                category,
+                serialNumber,
+                capacity,
+                registrationNumber,
+                vehicle.getWorkplace()
+        );
+    }
+
+    public String updateVehicle(Long vehicleId,
+                                String brand,
+                                String type,
+                                Vehicle.VehicleCategory category,
+                                String serialNumber,
+                                Double capacity,
+                                String registrationNumber,
+                                String workplace) {
+        Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
         String normalizedBrand = Vehicle.cleanText(brand);
         String normalizedType = Vehicle.cleanText(type);
         String normalizedSerialNumber = Vehicle.cleanText(serialNumber);
         String normalizedRegistrationNumber = Vehicle.cleanText(registrationNumber);
+        String normalizedWorkplace = Vehicle.cleanText(workplace);
 
         if (normalizedBrand == null || category == null) {
             return "missing_required_fields";
+        }
+
+        if (capacity != null && capacity < 0) {
+            return "invalid_capacity";
         }
 
         if (normalizedSerialNumber != null) {
@@ -143,6 +191,7 @@ public class VehicleService {
         vehicle.setSerialNumber(normalizedSerialNumber);
         vehicle.setCapacity(capacity);
         vehicle.setRegistrationNumber(normalizedRegistrationNumber);
+        vehicle.setWorkplace(normalizedWorkplace);
         vehicleRepository.save(vehicle);
 
         return "success";
@@ -151,5 +200,16 @@ public class VehicleService {
     private String buildArchivedSerialNumber(String serialNumber, Long vehicleId, LocalDateTime deletedAt) {
         String timestamp = deletedAt.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         return "deleted-vehicle-" + vehicleId + "-" + timestamp + "-" + serialNumber.trim().replace(" ", "_");
+    }
+
+    private boolean isGlobalAdministrator(User user) {
+        return "ADMIN".equalsIgnoreCase(user.getRole())
+                || "OWNER".equalsIgnoreCase(user.getRole())
+                || "SUPER_ADMIN".equalsIgnoreCase(user.getRole());
+    }
+
+    private boolean containsUser(java.util.Set<User> users, User expectedUser) {
+        return expectedUser.getId() != null && users.stream()
+                .anyMatch(user -> expectedUser.getId().equals(user.getId()));
     }
 }
