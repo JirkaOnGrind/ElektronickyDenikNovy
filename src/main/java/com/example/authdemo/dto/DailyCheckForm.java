@@ -11,4 +11,7 @@ public class DailyCheckForm {
     private Stav overallResult;
     private String defectsDescription;
     private Long vehicleId;
+    private Double engineHours;
+    private Double fueling;
+    private Boolean lubrication = false;
 }

@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -124,6 +125,9 @@ public class DailyCheckController {
         dailyCheck.setCheckDate(checkDate);
         dailyCheck.setOverallResult(form.getOverallResult());
         dailyCheck.setDefectsDescription(form.getDefectsDescription());
+        dailyCheck.setEngineHours(form.getEngineHours());
+        dailyCheck.setFueling(form.getFueling());
+        dailyCheck.setLubrication(Boolean.TRUE.equals(form.getLubrication()));
         dailyCheck.setUser(user.get());
         dailyCheck.setVehicle(vehicleOpt.get());
 
@@ -133,6 +137,11 @@ public class DailyCheckController {
         }
 
         return "redirect:/daily-check/success?checkId=" + savedCheck.get().getId();
+    }
+
+    @GetMapping("/vehicle/{id}")
+    public String showDailyCheckFormForVehicle(@PathVariable Long id, Principal principal, Model model) {
+        return showDailyCheckForm(id, null, null, "create", principal, model);
     }
 
     @GetMapping("/success")

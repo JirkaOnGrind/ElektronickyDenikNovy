@@ -103,6 +103,7 @@
                 <th scope="col" class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Uživatel</th>
                 <th scope="col" class="hidden md:table-cell w-24 md:w-32 px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stav</th>
                 <th scope="col" class="hidden md:table-cell w-40 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zadání</th>
+                <th scope="col" class="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provozní údaje</th>
                 <th scope="col" class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Poznámka / Závady</th>
             </tr>
             </thead>
@@ -136,6 +137,11 @@
                             <span class="font-bold block mb-1 text-red-800 text-xs uppercase">Popis závady:</span>
                             <span th:text="${check.defectsDescription}"></span>
                         </div>
+                        <div class="text-xs text-gray-600">
+                            <span th:text="${'Motohodiny: ' + (check.engineHours != null ? check.engineHours : '-')}"></span><br>
+                            <span th:text="${'Tankování: ' + (check.fueling != null ? check.fueling + ' l' : '-')}"></span><br>
+                            <span th:text="${'Mazání: ' + (check.lubrication ? 'ano' : 'ne')}"></span>
+                        </div>
                     </div>
 
                     <div class="hidden md:block font-semibold" th:text="${#temporals.format(check.checkDate, 'dd.MM.yyyy')}"></div>
@@ -162,13 +168,19 @@
                     <span th:if="${check.createdAt == null}" class="text-gray-300 italic">-</span>
                 </td>
 
+                <td class="hidden md:table-cell px-4 py-4 text-sm text-gray-600 align-top whitespace-nowrap">
+                    <div th:text="${'Motohodiny: ' + (check.engineHours != null ? check.engineHours : '-')}"></div>
+                    <div th:text="${'Tankování: ' + (check.fueling != null ? check.fueling + ' l' : '-')}"></div>
+                    <div th:text="${'Mazání: ' + (check.lubrication ? 'ano' : 'ne')}"></div>
+                </td>
+
                 <td class="hidden md:table-cell px-6 py-4 text-sm text-gray-500 break-words align-top">
                     <span th:if="${check.defectsDescription != null and !check.defectsDescription.isEmpty()}" th:text="${check.defectsDescription}"></span>
                     <span th:if="${check.defectsDescription == null or check.defectsDescription.isEmpty()}" class="text-gray-300 italic">- bez poznámky -</span>
                 </td>
             </tr>
             <tr th:if="${checks.empty}">
-                <td colspan="5" class="px-6 py-8 text-center text-gray-500">V tomto období nebyly nalezeny žádné záznamy.</td>
+                <td colspan="6" class="px-6 py-8 text-center text-gray-500">V tomto období nebyly nalezeny žádné záznamy.</td>
             </tr>
             </tbody>
         </table>

@@ -84,4 +84,12 @@ public class DailyCheckService {
                 DailyCheck.Stav.ZAVAD
         );
     }
+
+    public List<DailyCheck> findRecentDefectsByCompany(String companyKey) {
+        return dailyCheckRepository.findTop10ByOverallResultAndVehicleCompanyKeyOrderByCreatedAtDesc(DailyCheck.Stav.ZAVAD, companyKey);
+    }
+
+    public List<DailyCheck> findRecentDefects() {
+        return dailyCheckRepository.findTop10ByOverallResultOrderByCreatedAtDesc(DailyCheck.Stav.ZAVAD);
+    }
 }

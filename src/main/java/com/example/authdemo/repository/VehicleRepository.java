@@ -23,6 +23,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     @Query("SELECT v FROM Vehicle v WHERE v.deletedAt IS NULL AND v.companyKey = :companyKey AND :user MEMBER OF v.allowedUsers")
     List<Vehicle> findVisibleVehicles(@Param("companyKey") String companyKey, @Param("user") User user);
 
-    @Query("SELECT DISTINCT v FROM Vehicle v LEFT JOIN v.allowedUsers au LEFT JOIN v.vehicleAdmins va WHERE v.deletedAt IS NULL AND (au.id = :userId1 OR va.id = :userId2)")
-    List<Vehicle> findDistinctActiveByAllowedUsers_IdOrVehicleAdmins_Id(@Param("userId1") Long userId1, @Param("userId2") Long userId2);
+    @Query("SELECT DISTINCT v FROM Vehicle v LEFT JOIN v.allowedUsers au LEFT JOIN v.vehicleAdmins va LEFT JOIN v.maintenanceUsers mu "
+            + "WHERE v.deletedAt IS NULL AND (au.id = :userId OR va.id = :userId OR mu.id = :userId)")
+    List<Vehicle> findDistinctActiveByUserPermissions(@Param("userId") Long userId);
 }

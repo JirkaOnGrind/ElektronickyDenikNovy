@@ -8,12 +8,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 @Configuration
+@EnableMethodSecurity
 public class WebSecurityConfig {
     private static final Logger log = LoggerFactory.getLogger(WebSecurityConfig.class);
 
@@ -80,14 +83,18 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/sync/**").authenticated()
                         .requestMatchers("/api/offline-vehicles").authenticated()
 
-                        .requestMatchers("/super-admin/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/super-admin/**", "/superadmin/**").hasRole("SUPER_ADMIN")
 
                         // Správu oprávnění konkrétního stroje může používat i jeho správce.
-                        .requestMatchers("/admin/vehicles/**").authenticated()
+                        .requestMatchers("/admin/vehicles/**")
+                        .access(new WebExpressionAuthorizationManager("isAuthenticated() and !hasRole('MAINTENANCE')"))
                         .requestMatchers("/admin/**").hasAnyRole("ADMIN", "OWNER", "SUPER_ADMIN")
 
+                        .requestMatchers("/maintenance", "/maintenance/**", "/revision", "/revision/**")
+                        .authenticated()
+
                         .requestMatchers("/vehicles/register").hasAnyRole("ADMIN", "OWNER", "SUPER_ADMIN")
-                        .requestMatchers("/vehicles/**").hasAnyRole("ADMIN", "OWNER", "USER", "SUPER_ADMIN")
+                        .requestMatchers("/vehicles/**").hasAnyRole("ADMIN", "OWNER", "USER", "MAINTENANCE", "SUPER_ADMIN")
 
                         .anyRequest().authenticated()
                 )

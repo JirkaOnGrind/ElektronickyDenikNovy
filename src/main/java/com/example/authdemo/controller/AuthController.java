@@ -121,6 +121,7 @@ public class AuthController {
                                @RequestParam String email,
                                @RequestParam(required = false) String phone,
                                @RequestParam String key,
+                               @RequestParam(defaultValue = "USER") String role,
                                @RequestParam String password,
                                @RequestParam String confirmPassword,
                                @RequestParam boolean terms,
@@ -140,6 +141,7 @@ public class AuthController {
             return "registerUser";
         }
         User user = new User(firstName, lastName, email, phone, password, key);
+        user.setRole(User.ROLE_MAINTENANCE.equalsIgnoreCase(role) ? User.ROLE_MAINTENANCE : "USER");
         String result = userService.registerUser(user);
         if ("success".equals(result)) {
             emailService.sendVerificationEmail(user);
@@ -346,7 +348,6 @@ public class AuthController {
         }
 
         if (isAdminOrOwner || isVehicleAdmin) {
-
             return "vehicleSpecificAdmin";
         }
         Optional<Company> companyOpt = companyService.findByKey(currentUser.getKey());

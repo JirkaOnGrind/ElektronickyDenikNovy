@@ -73,7 +73,18 @@ public class Vehicle {
     @EqualsAndHashCode.Exclude
     private Set<User> vehicleAdmins = new HashSet<>();
 
-    // --- 3. CASCADE DELETE (Smazání kontrol při smazání vozidla) ---
+    // --- 3. MAINTENANCE PERMISSION (Údržba) ---
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "vehicle_maintenance_users",
+            joinColumns = @JoinColumn(name = "vehicle_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<User> maintenanceUsers = new HashSet<>();
+
+    // --- 4. CASCADE DELETE (Smazání kontrol při smazání vozidla) ---
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
@@ -90,6 +101,7 @@ public class Vehicle {
         this.allowedUsers.remove(user);
         // If they can't see it, they can't be admin either
         this.vehicleAdmins.remove(user);
+        this.maintenanceUsers.remove(user);
     }
 
     // Vehicle Admin Logic
@@ -97,10 +109,20 @@ public class Vehicle {
         this.vehicleAdmins.add(user);
         // A vehicle admin MUST be allowed to see the vehicle
         this.allowedUsers.add(user);
+        this.maintenanceUsers.add(user);
     }
 
     public void removeVehicleAdmin(User user) {
         this.vehicleAdmins.remove(user);
+    }
+
+    public void addMaintenanceUser(User user) {
+        this.maintenanceUsers.add(user);
+        this.allowedUsers.add(user);
+    }
+
+    public void removeMaintenanceUser(User user) {
+        this.maintenanceUsers.remove(user);
     }
 
     public String getDisplayName() {

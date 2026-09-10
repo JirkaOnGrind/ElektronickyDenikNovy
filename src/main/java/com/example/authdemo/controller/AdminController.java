@@ -1,16 +1,19 @@
 package com.example.authdemo.controller;
 
 import com.example.authdemo.model.Company;
+import com.example.authdemo.model.DailyCheck;
 import com.example.authdemo.model.User;
 import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.UserRepository;
 import com.example.authdemo.repository.VehicleRepository;
 import com.example.authdemo.service.CompanyService;
+import com.example.authdemo.service.DailyCheckService;
 import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
 import com.example.authdemo.service.WorkplaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -27,6 +30,7 @@ import java.util.UUID;
 
 @Controller
 @RequestMapping("/admin")
+@PreAuthorize("hasAnyRole('ADMIN', 'OWNER', 'SUPER_ADMIN')")
 public class AdminController {
     @Autowired
     private VehicleService vehicleService;
@@ -38,6 +42,8 @@ public class AdminController {
     private CompanyService companyService; // Injektáž služby
     @Autowired
     private WorkplaceService workplaceService;
+    @Autowired
+    private DailyCheckService dailyCheckService;
     @Autowired
     private final VehicleRepository vehicleRepository;
 
@@ -51,6 +57,9 @@ public class AdminController {
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
 
         model.addAttribute("user", loggedUser);
+        model.addAttribute("defectiveChecks", dailyCheckService.findRecentDefectsByCompany(loggedUser.getKey()).stream()
+                .filter(check -> !loggedUser.getDismissedDefects().contains(check))
+                .toList());
 
         // Zkusíme najít firmu podle KLÍČE, který má uživatel
         // To funguje pro OWNERa i pro běžné ADMINy (protože sdílí stejný klíč)
@@ -72,6 +81,26 @@ public class AdminController {
         model.addAttribute("pageTitle", "Administrace");
 
         return "homeAdmin";
+    }
+
+    @PostMapping("/defects/{id}/dismiss")
+    public String dismissDefect(@PathVariable Long id,
+                                @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
+        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
+        DailyCheck defect = dailyCheckService.getDailyCheckById(id)
+                .filter(DailyCheck::hasError)
+                .orElseThrow(() -> new IllegalArgumentException("Závada nebyla nalezena."));
+
+        if (!"SUPER_ADMIN".equals(loggedUser.getRole())
+                && !defect.getVehicle().getCompanyKey().equals(loggedUser.getKey())) {
+            throw new AccessDeniedException("Nemáte oprávnění skrýt závadu jiné společnosti.");
+        }
+
+        loggedUser.dismissDefect(defect);
+        userRepository.save(loggedUser);
+        return "SUPER_ADMIN".equals(loggedUser.getRole())
+                ? "redirect:/super-admin/dashboard"
+                : "redirect:/admin/dashboard";
     }
 
     // --- ZMĚNA KLÍČE (POST) ---
@@ -234,12 +263,14 @@ public class AdminController {
     public String updateUserPermissions(@PathVariable Long userId,
                                         @RequestParam(required = false) List<Long> allowedVehicleIds,
                                         @RequestParam(required = false) List<Long> vehicleAdminIds,
+                                        @RequestParam(required = false) List<Long> maintenanceVehicleIds,
                                         @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
 
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
         User targetUser = userRepository.findByIdAndDeletedAtIsNull(userId).orElseThrow();
 
-        if (!targetUser.getKey().equals(loggedUser.getKey()) || !"USER".equals(targetUser.getRole())) {
+        if (!targetUser.getKey().equals(loggedUser.getKey())
+                || !("USER".equals(targetUser.getRole()) || User.ROLE_MAINTENANCE.equals(targetUser.getRole()))) {
             throw new AccessDeniedException("Nemáte oprávnění měnit přístupy tohoto uživatele.");
         }
 
@@ -249,6 +280,7 @@ public class AdminController {
 
         if (allowedVehicleIds == null) allowedVehicleIds = new ArrayList<>();
         if (vehicleAdminIds == null) vehicleAdminIds = new ArrayList<>();
+        if (maintenanceVehicleIds == null) maintenanceVehicleIds = new ArrayList<>();
 
         List<Vehicle> companyVehicles = vehicleRepository.findByCompanyKeyAndDeletedAtIsNull(targetUser.getKey());
 
@@ -256,11 +288,19 @@ public class AdminController {
             // 1. Vehicle Admin
             if (vehicleAdminIds.contains(vehicle.getId())) {
                 vehicle.addVehicleAdmin(targetUser);
+                vehicle.addMaintenanceUser(targetUser);
                 if (!allowedVehicleIds.contains(vehicle.getId())) {
                     allowedVehicleIds.add(vehicle.getId());
                 }
             } else {
                 vehicle.removeVehicleAdmin(targetUser);
+            }
+
+            if (maintenanceVehicleIds.contains(vehicle.getId()) || vehicleAdminIds.contains(vehicle.getId())) {
+                vehicle.addMaintenanceUser(targetUser);
+                if (!allowedVehicleIds.contains(vehicle.getId())) allowedVehicleIds.add(vehicle.getId());
+            } else {
+                vehicle.removeMaintenanceUser(targetUser);
             }
 
             // 2. Visibility
@@ -335,7 +375,8 @@ public class AdminController {
         // model bindingu, jinak by podvržený parametr mohl přepsat existující účet.
         user.setId(null);
         user.setKey(admin.getKey());
-        user.setRole("USER");
+        String requestedRole = user.getRole();
+        user.setRole(User.ROLE_MAINTENANCE.equalsIgnoreCase(requestedRole) ? User.ROLE_MAINTENANCE : "USER");
         user.setGdprAccepted(true);
         user.setGdprAcceptedAt(LocalDateTime.now());
         user.setTermsAccepted(true);
@@ -421,6 +462,7 @@ public class AdminController {
     public String updateVehiclePermissions(@PathVariable Long vehicleId,
                                            @RequestParam(required = false) List<Long> allowedUserIds,
                                            @RequestParam(required = false) List<Long> vehicleAdminIds,
+                                           @RequestParam(required = false) List<Long> maintenanceUserIds,
                                            @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
         Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId).orElseThrow();
@@ -436,6 +478,7 @@ public class AdminController {
 
         if (allowedUserIds == null) allowedUserIds = new ArrayList<>();
         if (vehicleAdminIds == null) vehicleAdminIds = new ArrayList<>();
+        if (maintenanceUserIds == null) maintenanceUserIds = new ArrayList<>();
 
         List<User> companyUsers = userRepository.findByKeyAndDeletedAtIsNull(loggedUser.getKey());
 
@@ -445,9 +488,17 @@ public class AdminController {
 
             if (vehicleAdminIds.contains(user.getId())) {
                 vehicle.addVehicleAdmin(user);
+                vehicle.addMaintenanceUser(user);
                 if (!allowedUserIds.contains(user.getId())) allowedUserIds.add(user.getId());
             } else {
                 vehicle.removeVehicleAdmin(user);
+            }
+
+            if (maintenanceUserIds.contains(user.getId()) || vehicleAdminIds.contains(user.getId())) {
+                vehicle.addMaintenanceUser(user);
+                if (!allowedUserIds.contains(user.getId())) allowedUserIds.add(user.getId());
+            } else {
+                vehicle.removeMaintenanceUser(user);
             }
 
             if (allowedUserIds.contains(user.getId())) {
@@ -498,17 +549,18 @@ public class AdminController {
             return !"OWNER".equals(targetUser.getRole());
         }
 
-        return "ADMIN".equals(loggedUser.getRole()) && "USER".equals(targetUser.getRole());
+        return "ADMIN".equals(loggedUser.getRole())
+                && ("USER".equals(targetUser.getRole()) || User.ROLE_MAINTENANCE.equals(targetUser.getRole()));
     }
 
     private List<String> getEditableRoles(User loggedUser) {
         if ("SUPER_ADMIN".equals(loggedUser.getRole())) {
-            return List.of("USER", "ADMIN", "OWNER");
+            return List.of("USER", "MAINTENANCE", "ADMIN", "OWNER");
         }
         if ("OWNER".equals(loggedUser.getRole())) {
-            return List.of("USER", "ADMIN");
+            return List.of("USER", "MAINTENANCE", "ADMIN");
         }
-        return List.of("USER");
+        return List.of("USER", "MAINTENANCE");
     }
 
     @ModelAttribute

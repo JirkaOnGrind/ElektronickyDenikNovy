@@ -27,6 +27,22 @@
         <span class="block sm:inline" th:text="${errorMessage}"></span>
     </div>
 
+    <section th:if="${defectiveChecks != null and !defectiveChecks.empty}" class="max-w-4xl mx-auto mb-6 rounded-xl border border-red-300 bg-red-50 p-5 shadow-sm">
+        <h2 class="text-xl font-bold text-red-800 mb-3">Nahlášené závady</h2>
+        <div class="space-y-3">
+            <article th:each="check : ${defectiveChecks}" class="relative rounded-lg border border-red-200 bg-white p-3 pr-12 hover:border-red-400">
+                <form th:action="@{/admin/defects/{id}/dismiss(id=${check.id})}" method="post" class="absolute right-2 top-2">
+                    <button type="submit" class="flex h-8 w-8 items-center justify-center rounded-full text-lg text-gray-400 transition hover:bg-red-50 hover:text-red-600" aria-label="Skrýt závadu">&times;</button>
+                </form>
+                <a th:href="@{/daily-check(vehicleId=${check.vehicle.id})}" class="block">
+                    <div class="flex flex-wrap justify-between gap-2"><strong th:text="${check.vehicle.displayName}">Stroj</strong><span class="text-sm text-gray-600" th:text="${#temporals.format(check.checkDate, 'dd.MM.yyyy')}">Datum</span></div>
+                    <p class="mt-1 text-sm text-red-700" th:text="${check.defectsDescription != null and !check.defectsDescription.isBlank() ? check.defectsDescription : 'Závada bez popisu'}"></p>
+                    <p class="mt-1 text-xs text-gray-500" th:text="${check.user.firstName + ' ' + check.user.lastName}"></p>
+                </a>
+            </article>
+        </div>
+    </section>
+
 
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">

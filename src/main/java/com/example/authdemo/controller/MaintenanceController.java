@@ -10,6 +10,7 @@ import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -38,7 +39,7 @@ public class MaintenanceController {
     @Autowired
     private UserService userService;
 
-    @GetMapping
+    @GetMapping({"", "/"})
     public String showMaintenanceForm(@RequestParam(value = "vehicleId") Long vehicleId,
                                       @RequestParam(value = "startDate", required = false) LocalDate startDate,
                                       @RequestParam(value = "endDate", required = false) LocalDate endDate,
@@ -59,7 +60,7 @@ public class MaintenanceController {
         User user = userOpt.get();
         Vehicle vehicle = vehicleOpt.get();
 
-        if (!vehicleService.canAccessVehicle(user, vehicle)) {
+        if (!canViewVehicle(user, vehicle)) {
             return "redirect:/vehicles/list?error=access_denied";
         }
 
@@ -112,8 +113,8 @@ public class MaintenanceController {
             return "redirect:/vehicles/list?error=vehicle_not_found";
         }
 
-        if (!vehicleService.canAccessVehicle(user.get(), vehicleOpt.get())) {
-            return "redirect:/vehicles/list?error=access_denied";
+        if (!canMaintainVehicle(user.get(), vehicleOpt.get())) {
+            throw new AccessDeniedException("Nemáte oprávnění zapisovat údržbu tohoto stroje.");
         }
 
         MaintenanceRecord record = new MaintenanceRecord();
@@ -140,7 +141,7 @@ public class MaintenanceController {
 
         Optional<MaintenanceRecord> recordOpt = maintenanceService.findById(recordId);
         if (recordOpt.isEmpty()
-                || !vehicleService.canAccessVehicle(userOpt.get(), recordOpt.get().getVehicle())) {
+                || !canViewVehicle(userOpt.get(), recordOpt.get().getVehicle())) {
             return "redirect:/vehicles/list?error=access_denied";
         }
 
@@ -155,5 +156,34 @@ public class MaintenanceController {
         model.addAttribute("pageTitle", "Údržba uložena");
 
         return "maintenance-success";
+    }
+
+    private boolean canViewVehicle(User user, Vehicle vehicle) {
+        return belongsToSameCompany(user, vehicle)
+                && (isGlobalAdmin(user)
+                || containsUser(vehicle.getAllowedUsers(), user)
+                || containsUser(vehicle.getMaintenanceUsers(), user)
+                || containsUser(vehicle.getVehicleAdmins(), user));
+    }
+
+    private boolean canMaintainVehicle(User user, Vehicle vehicle) {
+        return belongsToSameCompany(user, vehicle)
+                && (isGlobalAdmin(user)
+                || containsUser(vehicle.getMaintenanceUsers(), user)
+                || containsUser(vehicle.getVehicleAdmins(), user));
+    }
+
+    private boolean belongsToSameCompany(User user, Vehicle vehicle) {
+        return user != null && vehicle != null && vehicle.getCompanyKey().equals(user.getKey());
+    }
+
+    private boolean isGlobalAdmin(User user) {
+        return "ADMIN".equalsIgnoreCase(user.getRole())
+                || "OWNER".equalsIgnoreCase(user.getRole())
+                || "SUPER_ADMIN".equalsIgnoreCase(user.getRole());
+    }
+
+    private boolean containsUser(java.util.Set<User> users, User user) {
+        return users.stream().anyMatch(candidate -> candidate.getId().equals(user.getId()));
     }
 }

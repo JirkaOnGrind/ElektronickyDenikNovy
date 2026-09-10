@@ -70,6 +70,11 @@
                         </svg>
                     </th>
 
+                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-green-600 uppercase tracking-wider">
+                        <span class="hidden md:inline">Údržba</span>
+                        <span class="md:hidden text-green-600">Ú</span>
+                    </th>
+
                     <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-purple-600 uppercase tracking-wider">
                         <span class="hidden md:inline">Správce</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,9 +86,10 @@
                 <tbody class="bg-white divide-y divide-gray-200">
 
                 <tr th:if="${users.empty}">
-                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
                         V systému nejsou žádní další uživatelé.
                     </td>
+
                 </tr>
 
                 <tr th:each="u : ${users}" class="hover:bg-gray-50 transition">
@@ -115,6 +121,14 @@
                         </label>
                     </td>
 
+                    <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle bg-green-50/30">
+                        <label class="inline-flex items-center justify-center w-full h-full cursor-pointer p-2">
+                            <input type="checkbox" name="maintenanceUserIds" th:value="${u.id}"
+                                   th:checked="${vehicle.maintenanceUsers.contains(u)}" th:disabled="${u.role == 'ADMIN'}"
+                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer disabled:opacity-50">
+                        </label>
+                    </td>
+
                     <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle bg-purple-50/30">
                         <label class="inline-flex items-center justify-center w-full h-full cursor-pointer p-2">
                             <input type="checkbox"
@@ -128,6 +142,7 @@
                         <th:block th:if="${u.role == 'ADMIN'}">
                             <input type="hidden" name="allowedUserIds" th:value="${u.id}">
                             <input type="hidden" name="vehicleAdminIds" th:value="${u.id}">
+                            <input type="hidden" name="maintenanceUserIds" th:value="${u.id}">
                         </th:block>
                     </td>
                 </tr>
@@ -155,6 +170,9 @@
     </form>
 
     <div class="md:hidden mt-4 text-xs text-gray-500 flex justify-center gap-6">
+        <div class="flex items-center gap-1">
+            <span class="font-bold text-green-600">Ú</span> = Údržba
+        </div>
         <div class="flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

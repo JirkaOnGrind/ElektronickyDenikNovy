@@ -31,4 +31,6 @@ public interface DailyCheckRepository extends JpaRepository<DailyCheck, Long> {
     List<DailyCheck> findByVehicleAndOverallResultOrderByCheckDateDescIdDesc(Vehicle vehicle, DailyCheck.Stav overallResult);
 
     Optional<DailyCheck> findTopByVehicleAndOverallResultOrderByCheckDateDesc(Vehicle vehicle, DailyCheck.Stav overallResult);
+    List<DailyCheck> findTop10ByOverallResultAndVehicleCompanyKeyOrderByCreatedAtDesc(DailyCheck.Stav overallResult, String companyKey);
+    List<DailyCheck> findTop10ByOverallResultOrderByCreatedAtDesc(DailyCheck.Stav overallResult);
 }

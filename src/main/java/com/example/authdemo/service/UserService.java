@@ -26,7 +26,7 @@ import java.util.Set;
 @Service
 public class UserService implements UserDetailsService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
-    private static final Set<String> EDITABLE_ROLES = Set.of("USER", "ADMIN", "OWNER");
+    private static final Set<String> EDITABLE_ROLES = Set.of("USER", "MAINTENANCE", "ADMIN", "OWNER");
     private static final int MINIMUM_PASSWORD_LENGTH = 12;
     private static final int MAXIMUM_BCRYPT_PASSWORD_BYTES = 72;
 
@@ -161,6 +161,7 @@ public class UserService implements UserDetailsService {
         for (Vehicle vehicle : vehicleRepository.findByCompanyKeyAndDeletedAtIsNull(user.getKey())) {
             vehicle.removeUserAccess(user);
             vehicle.removeVehicleAdmin(user);
+            vehicle.removeMaintenanceUser(user);
             vehicleRepository.save(vehicle);
         }
 

@@ -11,6 +11,7 @@ import com.example.authdemo.service.VehicleService;
 import com.example.authdemo.service.WorkplaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -96,6 +97,7 @@ public class VehicleController {
     }
 
     @GetMapping("/vehicles/list")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'MAINTENANCE', 'OWNER', 'SUPER_ADMIN')")
     public String showVehiclesList(Model model, Principal principal, Authentication authentication) {
         List<Vehicle> vehicles = vehicleService.getVehiclesForCurrentUser(principal);
 
@@ -118,7 +120,7 @@ public class VehicleController {
         ));
         model.addAttribute("operatorOptions", userService.findActiveUsersByCompanyKey(
                         userService.findByEmail(principal.getName()).orElseThrow().getKey()).stream()
-                .filter(user -> "USER".equalsIgnoreCase(user.getRole()))
+                .filter(user -> "USER".equalsIgnoreCase(user.getRole()) || user.isMaintenance())
                 .sorted(Comparator.comparing(User::getLastName, String.CASE_INSENSITIVE_ORDER)
                         .thenComparing(User::getFirstName, String.CASE_INSENSITIVE_ORDER))
                 .toList());
@@ -241,13 +243,14 @@ public class VehicleController {
         User user = userService.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("Uživatel nenalezen"));
 
-        List<Vehicle> vehicles = vehicleRepository.findDistinctActiveByAllowedUsers_IdOrVehicleAdmins_Id(user.getId(), user.getId());
+        List<Vehicle> vehicles = vehicleRepository.findDistinctActiveByUserPermissions(user.getId());
 
         return vehicles.stream()
                 .map(v -> new OfflineVehicleDto(
                         v.getId(),
                         v.getSafeRegistrationNumber(),
-                        v.getDisplayName()
+                        v.getDisplayName(),
+                        v.getMaintenanceUsers().contains(user)
                 ))
                 .collect(Collectors.toList());
     }
@@ -258,6 +261,7 @@ public class VehicleController {
         private Long id;
         private String spz;
         private String name;
+        private boolean maintenance;
     }
 
     private Vehicle requireCompanyAdministratorForVehicle(Long vehicleId, Principal principal) {

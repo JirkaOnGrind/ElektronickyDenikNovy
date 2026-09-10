@@ -9,12 +9,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -45,9 +50,23 @@ public class DailyCheck {
     @Column(name = "defects_description", columnDefinition = "TEXT")
     private String defectsDescription;
 
+    @Column(name = "engine_hours")
+    private Double engineHours;
+
+    @Column(name = "fueling")
+    private Double fueling;
+
+    @Column(name = "lubrication", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean lubrication = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, columnDefinition = "DATETIME")
     private LocalDateTime createdAt;
+
+    @ManyToMany(mappedBy = "dismissedDefects")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<User> dismissedByUsers = new HashSet<>();
 
     public DailyCheck(Vehicle vehicle, User user) {
         this.checkDate = LocalDate.now();

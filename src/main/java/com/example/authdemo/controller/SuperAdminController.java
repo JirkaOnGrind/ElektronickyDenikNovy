@@ -6,6 +6,7 @@ import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.CompanyRepository;
 import com.example.authdemo.repository.UserRepository;
 import com.example.authdemo.service.CompanyService;
+import com.example.authdemo.service.DailyCheckService;
 import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,8 @@ public class SuperAdminController {
 
     @Autowired
     private VehicleService vehicleService;
+    @Autowired
+    private DailyCheckService dailyCheckService;
 
     @GetMapping("/dashboard")
     public String dashboard(Model model, @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
@@ -49,6 +52,9 @@ public class SuperAdminController {
 
         model.addAttribute("companies", companies);
         model.addAttribute("user", loggedUser);
+        model.addAttribute("defectiveChecks", dailyCheckService.findRecentDefects().stream()
+                .filter(check -> !loggedUser.getDismissedDefects().contains(check))
+                .toList());
         model.addAttribute("pageTitle", "Super Admin - Prehled firem");
 
         return "superAdminDashboard";

@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.security.SecureRandom;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -11,6 +13,22 @@ import java.security.SecureRandom;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
+    public enum Position {
+        USER("Uživatel"),
+        MAINTENANCE("Údržba");
+
+        private final String displayName;
+
+        Position(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
+
+    public static final String ROLE_MAINTENANCE = Position.MAINTENANCE.name();
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     @Column(name = "first_name", nullable = false)
@@ -59,6 +77,16 @@ public class User {
 
     @Column(name = "deleted_at", columnDefinition = "DATETIME")
     private LocalDateTime deletedAt;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_dismissed_daily_checks",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "daily_check_id")
+    )
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<DailyCheck> dismissedDefects = new HashSet<>();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -216,5 +244,13 @@ public class User {
 
     public boolean isAdmin() {
         return "ADMIN".equalsIgnoreCase(this.role);
+    }
+
+    public boolean isMaintenance() {
+        return ROLE_MAINTENANCE.equalsIgnoreCase(this.role);
+    }
+
+    public void dismissDefect(DailyCheck dailyCheck) {
+        dismissedDefects.add(dailyCheck);
     }
 }
