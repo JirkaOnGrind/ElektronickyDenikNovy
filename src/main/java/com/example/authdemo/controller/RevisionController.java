@@ -49,8 +49,8 @@ public class RevisionController {
         User user = userOpt.get();
         Vehicle vehicle = vehicleOpt.get();
 
-        if (!canViewVehicle(user, vehicle)) {
-            return "redirect:/vehicles/list?error=access_denied";
+        if (!vehicleService.canMaintainVehicle(user, vehicle)) {
+            throw new AccessDeniedException("Nemáte oprávnění k modulu revizí tohoto stroje.");
         }
 
         companyService.findByKey(user.getKey())
@@ -95,7 +95,7 @@ public class RevisionController {
         if (user.isEmpty()) return "redirect:/login";
         Optional<Vehicle> vehicleOpt = vehicleService.getVehicleById(form.getVehicleId());
         if (vehicleOpt.isEmpty()) return "redirect:/vehicles/list";
-        if (!canMaintainVehicle(user.get(), vehicleOpt.get())) {
+        if (!vehicleService.canMaintainVehicle(user.get(), vehicleOpt.get())) {
             throw new AccessDeniedException("Nemáte oprávnění zapisovat revize tohoto stroje.");
         }
 
@@ -124,8 +124,8 @@ public class RevisionController {
 
         Optional<Revision> revisionOpt = revisionService.findById(revisionId);
         if (revisionOpt.isEmpty()
-                || !canViewVehicle(userOpt.get(), revisionOpt.get().getVehicle())) {
-            return "redirect:/vehicles/list?error=access_denied";
+                || !vehicleService.canMaintainVehicle(userOpt.get(), revisionOpt.get().getVehicle())) {
+            throw new AccessDeniedException("Nemáte oprávnění k této revizi.");
         }
 
         User user = userOpt.get();
@@ -140,32 +140,4 @@ public class RevisionController {
         return "revision-success";
     }
 
-    private boolean canViewVehicle(User user, Vehicle vehicle) {
-        return belongsToSameCompany(user, vehicle)
-                && (isGlobalAdmin(user)
-                || containsUser(vehicle.getAllowedUsers(), user)
-                || containsUser(vehicle.getMaintenanceUsers(), user)
-                || containsUser(vehicle.getVehicleAdmins(), user));
-    }
-
-    private boolean canMaintainVehicle(User user, Vehicle vehicle) {
-        return belongsToSameCompany(user, vehicle)
-                && (isGlobalAdmin(user)
-                || containsUser(vehicle.getMaintenanceUsers(), user)
-                || containsUser(vehicle.getVehicleAdmins(), user));
-    }
-
-    private boolean belongsToSameCompany(User user, Vehicle vehicle) {
-        return user != null && vehicle != null && vehicle.getCompanyKey().equals(user.getKey());
-    }
-
-    private boolean isGlobalAdmin(User user) {
-        return "ADMIN".equalsIgnoreCase(user.getRole())
-                || "OWNER".equalsIgnoreCase(user.getRole())
-                || "SUPER_ADMIN".equalsIgnoreCase(user.getRole());
-    }
-
-    private boolean containsUser(java.util.Set<User> users, User user) {
-        return users.stream().anyMatch(candidate -> candidate.getId().equals(user.getId()));
-    }
 }

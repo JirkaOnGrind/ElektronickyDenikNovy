@@ -3,14 +3,10 @@ package com.example.authdemo.repository;
 import com.example.authdemo.model.DailyCheck;
 import com.example.authdemo.model.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 public interface DailyCheckRepository extends JpaRepository<DailyCheck, Long> {
     List<DailyCheck> findByVehicleId(Long vehicleId);
@@ -23,9 +19,7 @@ public interface DailyCheckRepository extends JpaRepository<DailyCheck, Long> {
         return existsByVehicleIdAndCheckDate(vehicleId, LocalDate.now());
     }
 
-    @Query("SELECT DISTINCT dc.vehicle.id FROM DailyCheck dc WHERE dc.checkDate = :checkDate AND dc.vehicle.id IN :vehicleIds")
-    Set<Long> findCheckedVehicleIds(@Param("checkDate") LocalDate checkDate,
-                                    @Param("vehicleIds") Collection<Long> vehicleIds);
+    List<DailyCheck> findByCheckDateAndVehicleIdIn(LocalDate checkDate, List<Long> vehicleIds);
 
     List<DailyCheck> findByVehicleAndCheckDateBetweenOrderByCheckDateDescIdDesc(Vehicle vehicle, LocalDate startDate, LocalDate endDate);
     List<DailyCheck> findByVehicleAndOverallResultOrderByCheckDateDescIdDesc(Vehicle vehicle, DailyCheck.Stav overallResult);

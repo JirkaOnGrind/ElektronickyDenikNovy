@@ -326,12 +326,14 @@ public class AuthController {
         if (selectedVehicle != null) {
             List<VehicleDefectItem> defectHistory = buildDefectHistory(selectedVehicle);
             model.addAttribute("defectHistory", defectHistory);
+            model.addAttribute("canMaintainVehicle", vehicleService.canMaintainVehicle(currentUser, selectedVehicle));
             model.addAttribute(
                     "dailyCheckCompletedToday",
                     dailyCheckService.existsDailyCheckForVehicleToday(selectedVehicle.getId())
             );
         } else {
             model.addAttribute("dailyCheckCompletedToday", false);
+            model.addAttribute("canMaintainVehicle", false);
         }
         model.addAttribute("dailyCheckAlreadyCompleted", dailyCheckAlreadyCompleted);
 

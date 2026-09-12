@@ -76,7 +76,7 @@ public class SyncController {
         if (form == null || form.getVehicleId() == null || form.getOverallResult() == null) {
             return ResponseEntity.badRequest().body("Invalid sync payload");
         }
-        return processSync(principal, form.getVehicleId(), (user, vehicle) -> {
+        return processSync(principal, form.getVehicleId(), false, (user, vehicle) -> {
             DailyCheck check = new DailyCheck();
             check.setCheckDate(form.getCheckDate());
             check.setOverallResult(form.getOverallResult());
@@ -92,7 +92,7 @@ public class SyncController {
         if (form == null || form.getVehicleId() == null || form.getResult() == null) {
             return ResponseEntity.badRequest().body("Invalid sync payload");
         }
-        return processSync(principal, form.getVehicleId(), (user, vehicle) -> {
+        return processSync(principal, form.getVehicleId(), true, (user, vehicle) -> {
             MaintenanceRecord record = new MaintenanceRecord();
             record.setMaintenanceDate(form.getMaintenanceDate());
             record.setResult(form.getResult());
@@ -110,7 +110,7 @@ public class SyncController {
                 || form.getResult() == null || form.getFrequency() == null) {
             return ResponseEntity.badRequest().body("Invalid sync payload");
         }
-        return processSync(principal, form.getVehicleId(), (user, vehicle) -> {
+        return processSync(principal, form.getVehicleId(), true, (user, vehicle) -> {
             Revision revision = new Revision();
             revision.setRevisionDate(form.getRevisionDate());
             revision.setFrequency(form.getFrequency());
@@ -122,7 +122,10 @@ public class SyncController {
         });
     }
 
-    private ResponseEntity<?> processSync(Principal principal, Long vehicleId, SyncAction action) {
+    private ResponseEntity<?> processSync(Principal principal,
+                                          Long vehicleId,
+                                          boolean maintenancePermissionRequired,
+                                          SyncAction action) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -134,7 +137,10 @@ public class SyncController {
             return ResponseEntity.badRequest().body("Invalid sync target");
         }
 
-        if (!vehicleService.canAccessVehicle(userOpt.get(), vehicleOpt.get())) {
+        boolean authorized = maintenancePermissionRequired
+                ? vehicleService.canMaintainVehicle(userOpt.get(), vehicleOpt.get())
+                : vehicleService.canAccessVehicle(userOpt.get(), vehicleOpt.get());
+        if (!authorized) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

@@ -86,6 +86,16 @@ public class VehicleService {
         return isGlobalAdministrator(user) || containsUser(vehicle.getVehicleAdmins(), user);
     }
 
+    public boolean canMaintainVehicle(User user, Vehicle vehicle) {
+        if (user == null || vehicle == null || !vehicle.getCompanyKey().equals(user.getKey())) {
+            return false;
+        }
+
+        return isGlobalAdministrator(user)
+                || containsUser(vehicle.getMaintenanceUsers(), user)
+                || containsUser(vehicle.getVehicleAdmins(), user);
+    }
+
     public List<Vehicle> getVehiclesForUser(User user) {
         return vehicleRepository.findVisibleVehicles(user.getKey(), user);
     }

@@ -32,12 +32,11 @@
 </div>
 
 <div class="flex-grow container mx-auto px-4 py-8 print-container">
-
-    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div class="w-full">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 break-words">
+    <div class="mx-auto max-w-4xl rounded-xl bg-white p-6 shadow-lg">
+        <div class="mb-6 text-center">
+            <h1 class="text-2xl font-bold text-gray-800 break-words">
                 Správa oprávnění:
-                <span th:text="${vehicle.displayName}" class="text-blue-600 block md:inline"></span>
+                <span th:text="${vehicle.displayName}" class="block text-gray-900 md:inline"></span>
             </h1>
             <div class="print-only mt-2 text-xl font-bold uppercase tracking-wider border-b-2 border-gray-300 pb-1 mb-2">
                 Kategorie: Oprávnění uživatelů
@@ -46,11 +45,10 @@
                 Výrobní číslo: <span th:text="${vehicle.serialNumber}" class="font-semibold"></span>
             </p>
         </div>
-    </div>
 
-    <form th:action="@{/admin/vehicles/{vehicleId}/permissions(vehicleId=${vehicle.id})}" method="post">
+        <form th:action="@{/admin/vehicles/{vehicleId}/permissions(vehicleId=${vehicle.id})}" method="post" class="space-y-6">
 
-        <div class="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
+        <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <table class="min-w-full divide-y divide-gray-200 table-fixed">
                 <thead class="bg-gray-50">
                 <tr>
@@ -62,31 +60,26 @@
                         Email
                     </th>
 
-                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-blue-600 uppercase tracking-wider">
+                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <span class="hidden md:inline">Vidět</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <span class="md:hidden">V</span>
                     </th>
 
-                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-green-600 uppercase tracking-wider">
+                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <span class="hidden md:inline">Údržba</span>
-                        <span class="md:hidden text-green-600">Ú</span>
+                        <span class="md:hidden">Ú</span>
                     </th>
 
-                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-purple-600 uppercase tracking-wider">
+                    <th th:unless="${vehicleManager}" scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <span class="hidden md:inline">Správce</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mx-auto md:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
+                        <span class="md:hidden">S</span>
                     </th>
                 </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
 
                 <tr th:if="${users.empty}">
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                    <td th:attr="colspan=${vehicleManager ? 4 : 5}" class="px-6 py-8 text-center text-gray-500">
                         V systému nejsou žádní další uživatelé.
                     </td>
 
@@ -110,81 +103,65 @@
 
                     <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500 align-middle" th:text="${u.email}"></td>
 
-                    <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle bg-blue-50/30">
+                    <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle">
                         <label class="inline-flex items-center justify-center w-full h-full cursor-pointer p-2">
                             <input type="checkbox"
                                    name="allowedUserIds"
                                    th:value="${u.id}"
                                    th:checked="${vehicle.allowedUsers.contains(u)}"
-                                   th:disabled="${u.role == 'ADMIN'}"
-                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition duration-150 ease-in-out cursor-pointer disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-gray-700 border-gray-300 rounded focus:ring-gray-500 transition duration-150 ease-in-out cursor-pointer disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
                         </label>
                     </td>
 
-                    <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle bg-green-50/30">
+                    <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle">
                         <label class="inline-flex items-center justify-center w-full h-full cursor-pointer p-2">
                             <input type="checkbox" name="maintenanceUserIds" th:value="${u.id}"
-                                   th:checked="${vehicle.maintenanceUsers.contains(u)}" th:disabled="${u.role == 'ADMIN'}"
-                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer disabled:opacity-50">
+                                   th:checked="${vehicle.maintenanceUsers.contains(u)}"
+                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-gray-700 border-gray-300 rounded focus:ring-gray-500 cursor-pointer disabled:opacity-50">
                         </label>
                     </td>
 
-                    <td class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle bg-purple-50/30">
+                    <td th:unless="${vehicleManager}" class="px-1 md:px-2 py-4 whitespace-nowrap text-center align-middle">
                         <label class="inline-flex items-center justify-center w-full h-full cursor-pointer p-2">
                             <input type="checkbox"
                                    name="vehicleAdminIds"
                                    th:value="${u.id}"
                                    th:checked="${vehicle.vehicleAdmins.contains(u)}"
-                                   th:disabled="${u.role == 'ADMIN'}"
-                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-purple-600 border-gray-300 rounded focus:ring-purple-500 transition duration-150 ease-in-out cursor-pointer disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                                   class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-gray-700 border-gray-300 rounded focus:ring-gray-500 transition duration-150 ease-in-out cursor-pointer disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
                         </label>
-
-                        <th:block th:if="${u.role == 'ADMIN'}">
-                            <input type="hidden" name="allowedUserIds" th:value="${u.id}">
-                            <input type="hidden" name="vehicleAdminIds" th:value="${u.id}">
-                            <input type="hidden" name="maintenanceUserIds" th:value="${u.id}">
-                        </th:block>
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+        <div class="mt-6 flex flex-col items-center justify-between gap-4 md:flex-row">
             <button type="submit"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center justify-center gap-2">
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center justify-center gap-2 md:w-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 Uložit změny
             </button>
-
             <a th:href="@{/home(vehicleId=${vehicle.id})}"
-               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition duration-200 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Zpět na stroj
+               class="no-print inline-flex w-full items-center justify-center rounded bg-gray-500 px-6 py-2 font-bold text-white shadow transition duration-200 hover:bg-gray-600 md:w-auto">
+                Zpět
             </a>
         </div>
-    </form>
+        </form>
 
-    <div class="md:hidden mt-4 text-xs text-gray-500 flex justify-center gap-6">
+        <div class="md:hidden mt-4 text-xs text-gray-500 flex justify-center gap-6">
         <div class="flex items-center gap-1">
-            <span class="font-bold text-green-600">Ú</span> = Údržba
+            <span class="font-bold text-gray-700">Ú</span> = Údržba
         </div>
         <div class="flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+            <span class="font-bold text-gray-700">V</span>
             = Vidět stroj
         </div>
         <div class="flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+            <span class="font-bold text-gray-700">S</span>
             = Správce stroje
+        </div>
         </div>
     </div>
 

@@ -11,6 +11,7 @@ import com.example.authdemo.service.DailyCheckService;
 import com.example.authdemo.service.UserService;
 import com.example.authdemo.service.VehicleService;
 import com.example.authdemo.service.WorkplaceService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -85,7 +88,8 @@ public class AdminController {
 
     @PostMapping("/defects/{id}/dismiss")
     public String dismissDefect(@PathVariable Long id,
-                                @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
+                                @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
+                                HttpServletRequest request) {
         User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
         DailyCheck defect = dailyCheckService.getDailyCheckById(id)
                 .filter(DailyCheck::hasError)
@@ -98,6 +102,22 @@ public class AdminController {
 
         loggedUser.dismissDefect(defect);
         userRepository.save(loggedUser);
+
+        String referer = request.getHeader("Referer");
+        if (referer != null && !referer.isBlank()) {
+            try {
+                URI redirectUri = new URI(referer);
+                if (redirectUri.isAbsolute()
+                        && redirectUri.getHost() != null
+                        && ("http".equalsIgnoreCase(redirectUri.getScheme())
+                        || "https".equalsIgnoreCase(redirectUri.getScheme()))) {
+                    return "redirect:" + referer;
+                }
+            } catch (URISyntaxException ignored) {
+                // Neplatný Referer použije bezpečný fallback podle role.
+            }
+        }
+
         return "SUPER_ADMIN".equals(loggedUser.getRole())
                 ? "redirect:/super-admin/dashboard"
                 : "redirect:/admin/dashboard";
@@ -426,89 +446,6 @@ public class AdminController {
         userService.changeRole(id, "ADMIN");
         redirectAttributes.addFlashAttribute("successMessage", "Uživatel byl povýšen na admina.");
         return "redirect:/admin/usersList";
-    }
-
-    @GetMapping("/vehicles/{vehicleId}/users")
-    public String vehicleUsersList(@PathVariable Long vehicleId,
-                                   Model model,
-                                   @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
-        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
-        Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId).orElseThrow(() -> new RuntimeException("Vehicle not found"));
-
-        boolean isGlobalAdmin = "ADMIN".equals(loggedUser.getRole()) || "OWNER".equals(loggedUser.getRole()) || "SUPER_ADMIN".equals(loggedUser.getRole());
-        boolean isVehicleAdmin = vehicle.getVehicleAdmins().stream().anyMatch(admin -> admin.getId().equals(loggedUser.getId()));
-
-        if (!vehicle.getCompanyKey().equals(loggedUser.getKey()) || (!isGlobalAdmin && !isVehicleAdmin)) {
-            throw new AccessDeniedException("Nemáte oprávnění spravovat toto vozidlo.");
-        }
-
-        List<User> companyUsers = userRepository.findByKeyAndDeletedAtIsNull(loggedUser.getKey());
-
-        // 1. Odstraníme sebe (přihlášeného uživatele)
-        companyUsers.removeIf(u -> u.getId().equals(loggedUser.getId()));
-
-        // 2. NOVÁ ÚPRAVA: Odstraníme i ostatní ADMINy a OWNERa
-        // Ti mají přístup automaticky, takže je v tomto seznamu nepotřebujeme vidět
-        companyUsers.removeIf(u -> "ADMIN".equals(u.getRole()) || "OWNER".equals(u.getRole()) || "SUPER_ADMIN".equals(u.getRole()));
-
-        model.addAttribute("vehicle", vehicle);
-        model.addAttribute("users", companyUsers);
-        model.addAttribute("user", loggedUser);
-
-        return "vehicleUserList";
-    }
-
-    @PostMapping("/vehicles/{vehicleId}/permissions")
-    public String updateVehiclePermissions(@PathVariable Long vehicleId,
-                                           @RequestParam(required = false) List<Long> allowedUserIds,
-                                           @RequestParam(required = false) List<Long> vehicleAdminIds,
-                                           @RequestParam(required = false) List<Long> maintenanceUserIds,
-                                           @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
-        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
-        Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId).orElseThrow();
-
-        boolean isGlobalAdmin = "ADMIN".equals(loggedUser.getRole()) || "OWNER".equals(loggedUser.getRole()) || "SUPER_ADMIN".equals(loggedUser.getRole());
-
-        // Zbytek zůstává stejný (kontrola správce vozíku)
-        boolean isVehicleAdmin = vehicle.getVehicleAdmins().stream().anyMatch(admin -> admin.getId().equals(loggedUser.getId()));
-
-        if (!vehicle.getCompanyKey().equals(loggedUser.getKey()) || (!isGlobalAdmin && !isVehicleAdmin)) {
-            throw new AccessDeniedException("Nemáte oprávnění spravovat toto vozidlo.");
-        }
-
-        if (allowedUserIds == null) allowedUserIds = new ArrayList<>();
-        if (vehicleAdminIds == null) vehicleAdminIds = new ArrayList<>();
-        if (maintenanceUserIds == null) maintenanceUserIds = new ArrayList<>();
-
-        List<User> companyUsers = userRepository.findByKeyAndDeletedAtIsNull(loggedUser.getKey());
-
-        for (User user : companyUsers) {
-            // Přeskočíme přihlášeného uživatele (aby si sám sobě neodebral práva, pokud není ve formuláři)
-            if (user.getId().equals(loggedUser.getId())) continue;
-
-            if (vehicleAdminIds.contains(user.getId())) {
-                vehicle.addVehicleAdmin(user);
-                vehicle.addMaintenanceUser(user);
-                if (!allowedUserIds.contains(user.getId())) allowedUserIds.add(user.getId());
-            } else {
-                vehicle.removeVehicleAdmin(user);
-            }
-
-            if (maintenanceUserIds.contains(user.getId()) || vehicleAdminIds.contains(user.getId())) {
-                vehicle.addMaintenanceUser(user);
-                if (!allowedUserIds.contains(user.getId())) allowedUserIds.add(user.getId());
-            } else {
-                vehicle.removeMaintenanceUser(user);
-            }
-
-            if (allowedUserIds.contains(user.getId())) {
-                vehicle.allowUser(user);
-            } else {
-                vehicle.removeUserAccess(user);
-            }
-        }
-        vehicleRepository.save(vehicle);
-        return "redirect:/admin/vehicles/" + vehicleId + "/users?success";
     }
 
     @PostMapping("users/demote/{id}")

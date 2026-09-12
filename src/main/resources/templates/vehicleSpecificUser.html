@@ -54,10 +54,11 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
-        <a th:href="@{/daily-check(vehicleId=${selectedVehicle?.id},mode='create')}" class="block group"
+    <div class="grid grid-cols-1 gap-6 max-w-4xl mx-auto mb-8"
+         th:classappend="${canMaintainVehicle} ? 'md:grid-cols-3' : 'justify-items-center'">
+        <a th:href="${canMaintainVehicle} ? @{/daily-check(vehicleId=${selectedVehicle?.id})} : @{/daily-check(vehicleId=${selectedVehicle?.id},mode='create')}" class="block group w-full"
            th:attr="aria-label=${dailyCheckCompletedToday ? 'Dnešní kontrola je uložená, otevřít formulář' : 'Otevřít denní kontrolu'}"
-           th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
+           th:classappend="${(canMaintainVehicle ? '' : 'max-w-sm ') + (selectedVehicle == null ? 'pointer-events-none opacity-50' : '')}">
             <div class="rounded-xl p-4 text-center transition-all duration-300 border-2 h-full flex flex-col"
                  th:classappend="${dailyCheckCompletedToday}
                     ? 'bg-gradient-to-br from-emerald-50 via-white to-white border-emerald-300 shadow-lg shadow-emerald-100/70'
@@ -71,7 +72,8 @@
                     </svg>
                 </div>
                 <h3 class="text-lg font-semibold mb-1"
-                    th:classappend="${dailyCheckCompletedToday} ? 'text-emerald-950' : 'text-gray-800'">Denní kontrola</h3>
+                    th:classappend="${dailyCheckCompletedToday} ? 'text-emerald-950' : 'text-gray-800'"
+                    th:text="${canMaintainVehicle} ? 'Přehled kontrol' : 'Denní kontrola'">Denní kontrola</h3>
                 <span th:if="${dailyCheckCompletedToday}"
                       class="mt-auto inline-flex items-center justify-center gap-1.5 self-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
@@ -81,7 +83,7 @@
             </div>
         </a>
 
-        <a th:href="@{/maintenance(vehicleId=${selectedVehicle?.id})}" class="block group"
+        <a th:if="${canMaintainVehicle}" th:href="@{/maintenance(vehicleId=${selectedVehicle?.id})}" class="block group"
            aria-label="Otevřít záznamy o údržbě a servis"
            th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
             <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-green-100 hover:border-green-300 h-full flex flex-col">
@@ -96,7 +98,7 @@
             </div>
         </a>
 
-        <a th:href="@{/revision(vehicleId=${selectedVehicle?.id})}" class="block group"
+        <a th:if="${canMaintainVehicle}" th:href="@{/revision(vehicleId=${selectedVehicle?.id})}" class="block group"
            aria-label="Otevřít revize"
            th:classappend="${selectedVehicle == null} ? 'pointer-events-none opacity-50' : ''">
             <div class="bg-white rounded-xl shadow-lg p-4 text-center hover:shadow-xl transition-all duration-300 border-2 border-purple-100 hover:border-purple-300 h-full flex flex-col">
@@ -112,14 +114,16 @@
     </div>
 
     <div th:if="${selectedVehicle != null}" class="max-w-5xl mx-auto mt-3 mb-8">
-        <div class="bg-white rounded-2xl shadow-lg border border-red-100 overflow-hidden">
-            <div class="bg-gradient-to-r from-red-50 to-white px-6 py-5 border-b border-red-100">
-                <h2 class="text-2xl font-bold text-red-800">Historie závad stroje</h2>
-                <p class="text-sm text-red-700 mt-1">Přehled všech nahlášených závad od nejnovější po nejstarší.</p>
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="border-b border-gray-200 bg-gray-50 px-5 py-4 sm:px-6">
+                <h2 class="text-xl font-bold text-gray-900">Historie závad stroje</h2>
+                <p class="mt-1 text-sm text-gray-500">Přehled nahlášených závad od nejnovější.</p>
             </div>
 
-            <div th:if="${defectHistory != null and !defectHistory.isEmpty()}" class="divide-y divide-red-100">
-                <div th:each="defect : ${defectHistory}" class="px-6 py-5">
+            <div th:if="${defectHistory != null and !defectHistory.isEmpty()}" class="divide-y divide-gray-200">
+                <div th:each="defect, status : ${defectHistory}"
+                     class="px-5 py-4 sm:px-6"
+                     th:classappend="${status.index >= 3} ? 'defect-history-extra hidden'">
                     <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div class="space-y-2">
                             <div class="flex flex-wrap items-center gap-2">
@@ -145,7 +149,7 @@
                                 <span th:text="${#temporals.format(defect.createdAt, 'dd.MM.yyyy HH:mm')}"></span>
                             </p>
 
-                            <div class="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-900"
+                            <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm leading-6 text-gray-700"
                                  th:if="${defect.description != null and !defect.description.isEmpty()}">
                                 <span class="font-semibold block mb-1">Popis závady</span>
                                 <span th:text="${defect.description}"></span>
@@ -158,6 +162,12 @@
                         </div>
                     </div>
                 </div>
+                <div th:if="${defectHistory.size() > 3}" class="border-t border-gray-200 bg-gray-50 px-6 py-4 text-center">
+                    <button type="button" data-defect-history-toggle
+                            class="rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Ukázat více
+                    </button>
+                </div>
             </div>
 
             <div th:if="${defectHistory == null or defectHistory.isEmpty()}" class="px-6 py-10 text-center">
@@ -168,5 +178,11 @@
 </div>
 
 <footer th:replace="~{fragments/footer :: mainFooter}"></footer>
+<script>
+    document.querySelector('[data-defect-history-toggle]')?.addEventListener('click', function () {
+        document.querySelectorAll('.defect-history-extra').forEach(item => item.classList.remove('hidden'));
+        this.remove();
+    });
+</script>
 </body>
 </html>

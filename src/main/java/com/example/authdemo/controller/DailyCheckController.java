@@ -67,7 +67,7 @@ public class DailyCheckController {
         companyService.findByKey(user.getKey())
                 .ifPresent(company -> model.addAttribute("companyName", company.getCompanyName()));
 
-        boolean canViewHistory = vehicleService.canManageVehicle(user, vehicle);
+        boolean canViewHistory = vehicleService.canMaintainVehicle(user, vehicle);
         boolean dailyCheckCompletedToday =
                 dailyCheckService.existsDailyCheckForVehicleToday(vehicle.getId());
         model.addAttribute("canViewHistory", canViewHistory);

@@ -56,6 +56,7 @@ public class SuperAdminController {
                 .filter(check -> !loggedUser.getDismissedDefects().contains(check))
                 .toList());
         model.addAttribute("pageTitle", "Super Admin - Prehled firem");
+        model.addAttribute("companyContextActive", false);
 
         return "superAdminDashboard";
     }

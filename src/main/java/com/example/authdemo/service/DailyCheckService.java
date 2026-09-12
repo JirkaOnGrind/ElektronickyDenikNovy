@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class DailyCheckService {
@@ -71,7 +72,9 @@ public class DailyCheckService {
             return Collections.emptySet();
         }
 
-        return dailyCheckRepository.findCheckedVehicleIds(LocalDate.now(), vehicleIds);
+        return dailyCheckRepository.findByCheckDateAndVehicleIdIn(LocalDate.now(), vehicleIds).stream()
+                .map(check -> check.getVehicle().getId())
+                .collect(Collectors.toSet());
     }
 
     public Optional<DailyCheck> findLastDefect(Vehicle vehicle) {

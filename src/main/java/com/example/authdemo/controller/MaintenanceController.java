@@ -60,8 +60,8 @@ public class MaintenanceController {
         User user = userOpt.get();
         Vehicle vehicle = vehicleOpt.get();
 
-        if (!canViewVehicle(user, vehicle)) {
-            return "redirect:/vehicles/list?error=access_denied";
+        if (!vehicleService.canMaintainVehicle(user, vehicle)) {
+            throw new AccessDeniedException("Nemáte oprávnění k modulu údržby tohoto stroje.");
         }
 
         companyService.findByKey(user.getKey())
@@ -113,7 +113,7 @@ public class MaintenanceController {
             return "redirect:/vehicles/list?error=vehicle_not_found";
         }
 
-        if (!canMaintainVehicle(user.get(), vehicleOpt.get())) {
+        if (!vehicleService.canMaintainVehicle(user.get(), vehicleOpt.get())) {
             throw new AccessDeniedException("Nemáte oprávnění zapisovat údržbu tohoto stroje.");
         }
 
@@ -141,8 +141,8 @@ public class MaintenanceController {
 
         Optional<MaintenanceRecord> recordOpt = maintenanceService.findById(recordId);
         if (recordOpt.isEmpty()
-                || !canViewVehicle(userOpt.get(), recordOpt.get().getVehicle())) {
-            return "redirect:/vehicles/list?error=access_denied";
+                || !vehicleService.canMaintainVehicle(userOpt.get(), recordOpt.get().getVehicle())) {
+            throw new AccessDeniedException("Nemáte oprávnění k tomuto záznamu údržby.");
         }
 
         User user = userOpt.get();
@@ -158,32 +158,4 @@ public class MaintenanceController {
         return "maintenance-success";
     }
 
-    private boolean canViewVehicle(User user, Vehicle vehicle) {
-        return belongsToSameCompany(user, vehicle)
-                && (isGlobalAdmin(user)
-                || containsUser(vehicle.getAllowedUsers(), user)
-                || containsUser(vehicle.getMaintenanceUsers(), user)
-                || containsUser(vehicle.getVehicleAdmins(), user));
-    }
-
-    private boolean canMaintainVehicle(User user, Vehicle vehicle) {
-        return belongsToSameCompany(user, vehicle)
-                && (isGlobalAdmin(user)
-                || containsUser(vehicle.getMaintenanceUsers(), user)
-                || containsUser(vehicle.getVehicleAdmins(), user));
-    }
-
-    private boolean belongsToSameCompany(User user, Vehicle vehicle) {
-        return user != null && vehicle != null && vehicle.getCompanyKey().equals(user.getKey());
-    }
-
-    private boolean isGlobalAdmin(User user) {
-        return "ADMIN".equalsIgnoreCase(user.getRole())
-                || "OWNER".equalsIgnoreCase(user.getRole())
-                || "SUPER_ADMIN".equalsIgnoreCase(user.getRole());
-    }
-
-    private boolean containsUser(java.util.Set<User> users, User user) {
-        return users.stream().anyMatch(candidate -> candidate.getId().equals(user.getId()));
-    }
 }

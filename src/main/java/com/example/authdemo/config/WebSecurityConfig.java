@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 @Configuration
@@ -85,9 +84,9 @@ public class WebSecurityConfig {
 
                         .requestMatchers("/super-admin/**", "/superadmin/**").hasRole("SUPER_ADMIN")
 
-                        // Správu oprávnění konkrétního stroje může používat i jeho správce.
-                        .requestMatchers("/admin/vehicles/**")
-                        .access(new WebExpressionAuthorizationManager("isAuthenticated() and !hasRole('MAINTENANCE')"))
+                        .requestMatchers(HttpMethod.GET, "/admin/vehicles/*/users").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/admin/vehicles/*/permissions").authenticated()
+                        .requestMatchers("/admin/vehicles/**").hasAnyRole("ADMIN", "OWNER", "SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasAnyRole("ADMIN", "OWNER", "SUPER_ADMIN")
 
                         .requestMatchers("/maintenance", "/maintenance/**", "/revision", "/revision/**")

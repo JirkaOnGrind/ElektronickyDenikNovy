@@ -9,7 +9,8 @@
                 <div class="flex min-w-0 items-center gap-4 lg:gap-8">
                     <a href="https://www.provoznidenik.com" target="_blank" rel="noopener noreferrer"
                        class="flex-shrink-0 text-lg font-bold tracking-wide text-orange-600 transition hover:text-orange-700 sm:text-xl">provoznidenik.com</a>
-                    <nav class="hidden items-center gap-1 md:flex" sec:authorize="hasAnyRole('ADMIN','OWNER','SUPER_ADMIN')">
+                    <nav th:if="${companyContextActive != false}"
+                         class="hidden items-center gap-1 md:flex" sec:authorize="hasAnyRole('ADMIN','OWNER','SUPER_ADMIN')">
                         <a th:href="@{/admin/dashboard}" class="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-green-50 lg:text-base">Domů</a>
                         <a th:href="@{/admin/usersList}" class="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-blue-50 lg:text-base">Uživatelé</a>
                         <a th:href="@{/admin/machines}" class="rounded-lg px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-orange-50 lg:text-base">Stroje</a>
@@ -38,7 +39,8 @@
                                 <p class="truncate text-sm font-semibold text-gray-900" th:text="${loggedInUserName != null ? loggedInUserName : #authentication.name}">Jan Novák</p>
                                 <p class="truncate text-xs text-gray-500" sec:authentication="principal.username">admin@example.cz</p>
                             </div>
-                            <div class="border-b border-gray-100 py-1 md:hidden" sec:authorize="hasAnyRole('ADMIN','OWNER','SUPER_ADMIN')">
+                            <div th:if="${companyContextActive != false}"
+                                 class="border-b border-gray-100 py-1 md:hidden" sec:authorize="hasAnyRole('ADMIN','OWNER','SUPER_ADMIN')">
                                 <a th:href="@{/admin/dashboard}" class="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Domů</a>
                                 <a th:href="@{/admin/usersList}" class="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Uživatelé</a>
                                 <a th:href="@{/admin/machines}" class="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">Stroje</a>
