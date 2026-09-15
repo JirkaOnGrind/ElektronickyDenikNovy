@@ -71,6 +71,11 @@ public class UserService implements UserDetailsService {
             return "weak_password";
         }
 
+        // Public and company-admin user creation always starts at the lowest global role.
+        // Owner creation is a separate, explicit company-registration workflow.
+        if (!User.ROLE_OWNER.equals(user.getRole())) {
+            user.setRole(User.ROLE_USER);
+        }
         user.setEmail(normalizeRequiredText(user.getEmail()));
         user.setFirstName(normalizeRequiredText(user.getFirstName()));
         user.setLastName(normalizeRequiredText(user.getLastName()));
@@ -166,7 +171,6 @@ public class UserService implements UserDetailsService {
         }
 
         user.setDeletedAt(deletedAt);
-        user.setVerificated(false);
         user.setEmail(buildArchivedValue(user.getEmail(), user.getId(), deletedAt, "deleted-user-email"));
         if (user.getPhone() != null) {
             user.setPhone(buildArchivedValue(user.getPhone(), user.getId(), deletedAt, "deleted-user-phone"));

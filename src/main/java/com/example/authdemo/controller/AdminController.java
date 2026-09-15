@@ -57,7 +57,7 @@ public class AdminController {
     // --- DASHBOARD (Home Admin) ---
     @GetMapping("/dashboard")
     public String dashboard(Model model, @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
-        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
+        User loggedUser = userRepository.findByEmailWithDismissedDefects(authUser.getUsername()).orElseThrow();
 
         model.addAttribute("user", loggedUser);
         model.addAttribute("defectiveChecks", dailyCheckService.findRecentDefectsByCompany(loggedUser.getKey()).stream()
@@ -90,7 +90,7 @@ public class AdminController {
     public String dismissDefect(@PathVariable Long id,
                                 @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
                                 HttpServletRequest request) {
-        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
+        User loggedUser = userRepository.findByEmailWithDismissedDefects(authUser.getUsername()).orElseThrow();
         DailyCheck defect = dailyCheckService.getDailyCheckById(id)
                 .filter(DailyCheck::hasError)
                 .orElseThrow(() -> new IllegalArgumentException("Závada nebyla nalezena."));
@@ -160,11 +160,6 @@ public class AdminController {
         users.removeIf(u -> "SUPER_ADMIN".equals(u.getRole()));
         // -------------------------------------------------------------------------
 
-        // 3. Specifická pravidla pro ADMINa (nevidí OWNERa a jiné ADMINy)
-        if ("ADMIN".equals(loggedUser.getRole())) {
-            users.removeIf(u -> "OWNER".equals(u.getRole()) || "ADMIN".equals(u.getRole()));
-        }
-
         TreeSet<String> userWorkplaces = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         users.stream()
                 .map(User::getWorkplace)
@@ -190,12 +185,6 @@ public class AdminController {
 
         if ("SUPER_ADMIN".equals(targetUser.getRole())) {
             throw new AccessDeniedException("Účet superadmina nelze spravovat z firemní administrace.");
-        }
-
-        if ("ADMIN".equals(loggedUser.getRole())) {
-            if ("OWNER".equals(targetUser.getRole()) || "ADMIN".equals(targetUser.getRole())) {
-                throw new AccessDeniedException("Nemáte oprávnění spravovat administrátory nebo vlastníka.");
-            }
         }
 
         List<Vehicle> allVehicles = vehicleRepository.findByCompanyKeyAndDeletedAtIsNull(targetUser.getKey());
@@ -395,8 +384,7 @@ public class AdminController {
         // model bindingu, jinak by podvržený parametr mohl přepsat existující účet.
         user.setId(null);
         user.setKey(admin.getKey());
-        String requestedRole = user.getRole();
-        user.setRole(User.ROLE_MAINTENANCE.equalsIgnoreCase(requestedRole) ? User.ROLE_MAINTENANCE : "USER");
+        user.setRole(User.ROLE_USER);
         user.setGdprAccepted(true);
         user.setGdprAcceptedAt(LocalDateTime.now());
         user.setTermsAccepted(true);
@@ -432,6 +420,7 @@ public class AdminController {
     }
 
     @PostMapping("users/promote/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'SUPER_ADMIN')")
     public String promoteUserToAdmin(@PathVariable Long id,
                                      @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
                                      RedirectAttributes redirectAttributes) {
@@ -449,6 +438,7 @@ public class AdminController {
     }
 
     @PostMapping("users/demote/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'SUPER_ADMIN')")
     public String demoteAdminToUser(@PathVariable Long id,
                                     @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser,
                                     RedirectAttributes redirectAttributes) {
@@ -474,16 +464,15 @@ public class AdminController {
     }
 
     private boolean canEditUser(User loggedUser, User targetUser) {
-        if ("SUPER_ADMIN".equals(targetUser.getRole()) || loggedUser.getId().equals(targetUser.getId())) {
+        if ("SUPER_ADMIN".equals(targetUser.getRole()) || "OWNER".equals(targetUser.getRole())
+                || loggedUser.getId().equals(targetUser.getId())) {
             return false;
         }
 
-        if ("SUPER_ADMIN".equals(loggedUser.getRole())) {
-            return true;
-        }
+        if ("SUPER_ADMIN".equals(loggedUser.getRole())) return true;
 
         if ("OWNER".equals(loggedUser.getRole())) {
-            return !"OWNER".equals(targetUser.getRole());
+            return true;
         }
 
         return "ADMIN".equals(loggedUser.getRole())
@@ -492,7 +481,7 @@ public class AdminController {
 
     private List<String> getEditableRoles(User loggedUser) {
         if ("SUPER_ADMIN".equals(loggedUser.getRole())) {
-            return List.of("USER", "MAINTENANCE", "ADMIN", "OWNER");
+            return List.of("USER", "MAINTENANCE", "ADMIN");
         }
         if ("OWNER".equals(loggedUser.getRole())) {
             return List.of("USER", "MAINTENANCE", "ADMIN");

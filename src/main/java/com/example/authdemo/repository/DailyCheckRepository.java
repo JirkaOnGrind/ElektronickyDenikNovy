@@ -3,6 +3,9 @@ package com.example.authdemo.repository;
 import com.example.authdemo.model.DailyCheck;
 import com.example.authdemo.model.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +28,18 @@ public interface DailyCheckRepository extends JpaRepository<DailyCheck, Long> {
     List<DailyCheck> findByVehicleAndOverallResultOrderByCheckDateDescIdDesc(Vehicle vehicle, DailyCheck.Stav overallResult);
 
     Optional<DailyCheck> findTopByVehicleAndOverallResultOrderByCheckDateDesc(Vehicle vehicle, DailyCheck.Stav overallResult);
-    List<DailyCheck> findTop10ByOverallResultAndVehicleCompanyKeyOrderByCreatedAtDesc(DailyCheck.Stav overallResult, String companyKey);
-    List<DailyCheck> findTop10ByOverallResultOrderByCreatedAtDesc(DailyCheck.Stav overallResult);
+    @Query("select dc from DailyCheck dc left join fetch dc.user join fetch dc.vehicle v "
+            + "where dc.overallResult = :overallResult and v.companyKey = :companyKey "
+            + "order by dc.createdAt desc")
+    List<DailyCheck> findRecentDefectsByCompany(
+            @Param("overallResult") DailyCheck.Stav overallResult,
+            @Param("companyKey") String companyKey,
+            Pageable pageable);
+
+    @Query("select dc from DailyCheck dc left join fetch dc.user join fetch dc.vehicle "
+            + "where dc.overallResult = :overallResult "
+            + "order by dc.createdAt desc")
+    List<DailyCheck> findRecentDefects(
+            @Param("overallResult") DailyCheck.Stav overallResult,
+            Pageable pageable);
 }

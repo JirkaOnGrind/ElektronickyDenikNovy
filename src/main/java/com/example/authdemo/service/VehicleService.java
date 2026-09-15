@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
@@ -104,6 +105,7 @@ public class VehicleService {
         return vehicleRepository.findByCompanyKeyAndDeletedAtIsNull(admin.getKey());
     }
 
+    @Transactional
     public void hideVehicleFromUser(Long vehicleId, Long userIdToBan) {
         Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));
@@ -115,6 +117,7 @@ public class VehicleService {
         vehicleRepository.save(vehicle);
     }
 
+    @Transactional
     public void restoreAccessForUser(Long vehicleId, Long userIdToAllow) {
         Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));
@@ -126,6 +129,7 @@ public class VehicleService {
         vehicleRepository.save(vehicle);
     }
 
+    @Transactional
     public void deleteVehicle(Long vehicleId) {
         Vehicle vehicle = vehicleRepository.findByIdAndDeletedAtIsNull(vehicleId)
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));

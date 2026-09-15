@@ -4,6 +4,7 @@ import com.example.authdemo.model.DailyCheck;
 import com.example.authdemo.model.Vehicle;
 import com.example.authdemo.repository.DailyCheckRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
@@ -89,10 +90,11 @@ public class DailyCheckService {
     }
 
     public List<DailyCheck> findRecentDefectsByCompany(String companyKey) {
-        return dailyCheckRepository.findTop10ByOverallResultAndVehicleCompanyKeyOrderByCreatedAtDesc(DailyCheck.Stav.ZAVAD, companyKey);
+        return dailyCheckRepository.findRecentDefectsByCompany(
+                DailyCheck.Stav.ZAVAD, companyKey, PageRequest.of(0, 10));
     }
 
     public List<DailyCheck> findRecentDefects() {
-        return dailyCheckRepository.findTop10ByOverallResultOrderByCreatedAtDesc(DailyCheck.Stav.ZAVAD);
+        return dailyCheckRepository.findRecentDefects(DailyCheck.Stav.ZAVAD, PageRequest.of(0, 10));
     }
 }

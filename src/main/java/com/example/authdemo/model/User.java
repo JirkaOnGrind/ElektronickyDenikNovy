@@ -2,6 +2,7 @@ package com.example.authdemo.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 import java.security.SecureRandom;
 import java.util.HashSet;
@@ -9,10 +10,15 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@SQLRestriction("deleted_at IS NULL")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
+    public static final String ROLE_USER = "USER";
+    public static final String ROLE_ADMIN = "ADMIN";
+    public static final String ROLE_OWNER = "OWNER";
+    public static final String ROLE_SUPER_ADMIN = "SUPER_ADMIN";
     public enum Position {
         USER("Uživatel"),
         MAINTENANCE("Údržba");
@@ -218,7 +224,7 @@ public class User {
         this.email = email;
         this.phone = phone;
         this.password = password;
-        this.role = "USER";
+        this.role = ROLE_USER;
         this.gdprAccepted = true;
         this.termsAccepted = true;
         this.gdprAcceptedAt = LocalDateTime.now();

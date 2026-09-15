@@ -78,14 +78,18 @@ public final class SimpleSshTunnel {
                     "SSH host key verification is enabled, but SSH_KNOWN_HOSTS_FILE is not set");
         }
 
-        connectWithRetry(config, true);
+        while (!stopping && !connectWithRetry(config)) {
+            log.warn("SSH tunnel is still unavailable; another connection cycle will follow.");
+            sleepWithoutThrowing(config.reconnectIntervalMs());
+        }
+        if (stopping) {
+            return;
+        }
         startMonitor(config);
         Runtime.getRuntime().addShutdownHook(new Thread(SimpleSshTunnel::shutdown, "ssh-tunnel-shutdown"));
     }
 
-    private static boolean connectWithRetry(TunnelConfig config, boolean failWhenExhausted) {
-        Exception lastFailure = null;
-
+    private static boolean connectWithRetry(TunnelConfig config) {
         for (int attempt = 1; attempt <= config.connectAttempts() && !stopping; attempt++) {
             Session candidate = null;
             try {
@@ -129,7 +133,6 @@ public final class SimpleSshTunnel {
                         assignedPort, config.remoteDbHost(), config.remoteDbPort());
                 return true;
             } catch (Exception ex) {
-                lastFailure = ex;
                 if (candidate != null && candidate.isConnected()) {
                     candidate.disconnect();
                 }
@@ -141,11 +144,6 @@ public final class SimpleSshTunnel {
             }
         }
 
-        if (failWhenExhausted) {
-            throw new IllegalStateException(
-                    "SSH tunnel could not be established after " + config.connectAttempts() + " attempts",
-                    lastFailure);
-        }
         return false;
     }
 
@@ -164,7 +162,7 @@ public final class SimpleSshTunnel {
                     Session current = session;
                     if (current == null || !current.isConnected()) {
                         log.warn("SSH tunnel connection was lost; reconnecting.");
-                        connectWithRetry(config, false);
+                        connectWithRetry(config);
                     }
                 }
             }, "ssh-tunnel-monitor");

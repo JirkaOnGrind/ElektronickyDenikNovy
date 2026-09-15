@@ -29,6 +29,7 @@ public class VehiclePermissionService {
         requireCanManage(actor, vehicle);
 
         List<User> users = userRepository.findByKeyAndDeletedAtIsNull(vehicle.getCompanyKey()).stream()
+                .filter(user -> !GLOBAL_ROLES.contains(user.getRole()))
                 .filter(user -> canEditTarget(actor, vehicle, user))
                 .toList();
         return new VehiclePermissionData(vehicle, actor, users);

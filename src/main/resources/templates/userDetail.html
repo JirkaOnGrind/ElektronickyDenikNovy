@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="cs" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,8 +53,9 @@
                             <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
                         </svg>
                         <span th:text="${user.role == 'USER' ? 'Uživatel' :
+                            (user.role == 'MAINTENANCE' ? 'Údržba' :
                             (user.role == 'ADMIN' ? 'Administrátor' :
-                            (user.role == 'OWNER' ? 'Vlastník' : 'Superadministrátor'))}"></span>
+                            (user.role == 'OWNER' ? 'Vlastník' : 'Superadministrátor')))}"></span>
                     </span>
                 </div>
             </div>
@@ -187,15 +188,11 @@
                     <h2 class="text-lg font-bold text-gray-900">Přístup ke strojům</h2>
                     <p class="text-xs text-gray-500">Nastavte, které stroje uživatel vidí a spravuje.</p>
                 </div>
-                <div class="hidden sm:flex text-xs font-medium text-gray-500 gap-4">
-                    <span>Viditelnost</span>
-                    <span>Údržba</span>
-                    <span>Správce</span>
-                </div>
             </div>
 
             <div class="px-8 py-6">
-                <form th:action="@{/admin/users/{userId}/permissions(userId=${user.id})}" method="post">
+                <form th:if="${canEditUser and (user.role == 'USER' or user.role == 'MAINTENANCE')}"
+                      th:action="@{/admin/users/{userId}/permissions(userId=${user.id})}" method="post">
                     <div th:if="${vehicles.empty}" class="text-center text-gray-500 py-4">
                         V systému nejsou žádné stroje.
                     </div>
@@ -211,18 +208,18 @@
                             </div>
                             <div class="flex items-center gap-4 sm:gap-6">
                                 <label class="flex flex-col items-center cursor-pointer group w-14">
-                                    <span class="text-xs text-gray-500 font-semibold mb-1">Vidět</span>
                                     <input type="checkbox" name="allowedVehicleIds" th:value="${vehicle.id}" th:checked="${vehicle.allowedUsers.contains(user)}"
+                                           title="Tento uživatel může dělat pouze denní zápisy a vidět historii závad vozidla."
                                            class="focus:ring-gray-500 h-5 w-5 text-gray-700 border-gray-300 rounded cursor-pointer">
                                 </label>
                                 <label class="flex flex-col items-center cursor-pointer group w-14">
-                                    <span class="text-xs text-gray-500 font-semibold mb-1">Údržba</span>
                                     <input type="checkbox" name="maintenanceVehicleIds" th:value="${vehicle.id}" th:checked="${vehicle.maintenanceUsers.contains(user)}"
+                                           title="Tento uživatel může provádět denní zápisy, evidovat údržbu a vidět historii závad vozidla."
                                            class="focus:ring-gray-500 h-5 w-5 text-gray-700 border-gray-300 rounded cursor-pointer">
                                 </label>
                                 <label class="flex flex-col items-center cursor-pointer group w-14">
-                                    <span class="text-xs text-gray-500 font-semibold mb-1">Správce</span>
                                     <input type="checkbox" name="vehicleAdminIds" th:value="${vehicle.id}" th:checked="${vehicle.vehicleAdmins.contains(user)}"
+                                           title="Tento uživatel může spravovat vozidlo, jeho údaje a přístupy ostatních uživatelů."
                                            class="focus:ring-gray-500 h-5 w-5 text-gray-700 border-gray-300 rounded cursor-pointer">
                                 </label>
                             </div>
@@ -244,7 +241,15 @@
 
         <div class="bg-gray-50 px-8 py-5 border-t border-gray-200 flex flex-col sm:flex-row justify-center items-center gap-3">
 
-            <form th:if="${(loggedUser.role == 'OWNER' or loggedUser.role == 'SUPER_ADMIN') and user.role == 'ADMIN'}"
+            <form sec:authorize="hasAnyRole('OWNER', 'SUPER_ADMIN')"
+                  th:if="${user.role == 'USER'}"
+                  th:action="@{/admin/users/promote/{id}(id=${user.id})}" method="post">
+                <button type="submit" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg shadow-sm">
+                    Povýšit na Admina
+                </button>
+            </form>
+
+            <form sec:authorize="hasAnyRole('OWNER', 'SUPER_ADMIN')" th:if="${user.role == 'ADMIN'}"
                   th:action="@{/admin/users/demote/{id}(id=${user.id})}" method="post"
                   onsubmit="return confirm('Opravdu chcete tomuto uživateli odebrat administrátorská práva?');">
                 <button type="submit"
@@ -252,11 +257,11 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Odebrat oprávnění admina
+                    Degradovat na Uživatele
                 </button>
             </form>
 
-            <form th:if="${loggedUser.role == 'SUPER_ADMIN' or loggedUser.role == 'OWNER' or (loggedUser.role == 'ADMIN' and user.role == 'USER')}"
+            <form th:if="${user.role != 'OWNER' and (loggedUser.role == 'SUPER_ADMIN' or loggedUser.role == 'OWNER' or (loggedUser.role == 'ADMIN' and user.role == 'USER'))}"
                   th:action="@{/admin/users/delete/{id}(id=${user.id})}" method="post"
                   onsubmit="return confirm('Opravdu chcete smazat tohoto uživatele?');">
                 <button type="submit"

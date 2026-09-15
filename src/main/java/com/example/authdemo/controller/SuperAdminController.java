@@ -48,7 +48,7 @@ public class SuperAdminController {
     @GetMapping("/dashboard")
     public String dashboard(Model model, @AuthenticationPrincipal org.springframework.security.core.userdetails.User authUser) {
         List<Company> companies = companyRepository.findAll();
-        User loggedUser = userRepository.findByEmailAndDeletedAtIsNull(authUser.getUsername()).orElseThrow();
+        User loggedUser = userRepository.findByEmailWithDismissedDefects(authUser.getUsername()).orElseThrow();
 
         model.addAttribute("companies", companies);
         model.addAttribute("user", loggedUser);

@@ -40,6 +40,10 @@ public class SyncWorker extends Worker {
         if (cookies == null || cookies.isBlank()) {
             return Result.retry();
         }
+        String csrfToken = fetchCsrfToken(cookies, gson);
+        if (csrfToken == null) {
+            return Result.retry();
+        }
 
         List<Map<String, Object>> failedItems = new ArrayList<>();
 
@@ -54,7 +58,7 @@ public class SyncWorker extends Worker {
                 else if ("REVISION".equals(type)) endpoint = "/api/sync/revision";
 
                 if (!endpoint.isEmpty()) {
-                    if (!sendPost(SERVER_URL + endpoint, gson.toJson(payload), cookies)) {
+                    if (!sendPost(SERVER_URL + endpoint, gson.toJson(payload), cookies, csrfToken)) {
                         failedItems.add(item);
                     }
                 }
@@ -68,7 +72,31 @@ public class SyncWorker extends Worker {
         return failedItems.isEmpty() ? Result.success() : Result.retry();
     }
 
-    private boolean sendPost(String urlString, String json, String cookies) {
+    private String fetchCsrfToken(String cookies, Gson gson) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(SERVER_URL + "/api/csrf").openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Cookie", cookies);
+            conn.setConnectTimeout(15_000);
+            conn.setReadTimeout(20_000);
+            conn.setInstanceFollowRedirects(false);
+            if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) return null;
+            try (java.io.InputStreamReader reader = new java.io.InputStreamReader(
+                    conn.getInputStream(), StandardCharsets.UTF_8)) {
+                Map<String, String> response = gson.fromJson(
+                        reader, new TypeToken<Map<String, String>>(){}.getType());
+                return response == null ? null : response.get("token");
+            }
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private boolean sendPost(String urlString, String json, String cookies, String csrfToken) {
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlString);
@@ -77,6 +105,7 @@ public class SyncWorker extends Worker {
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("Accept", "application/json, text/plain");
             conn.setRequestProperty("Cookie", cookies);
+            conn.setRequestProperty("X-CSRF-TOKEN", csrfToken);
             conn.setConnectTimeout(15_000);
             conn.setReadTimeout(20_000);
             conn.setInstanceFollowRedirects(false);

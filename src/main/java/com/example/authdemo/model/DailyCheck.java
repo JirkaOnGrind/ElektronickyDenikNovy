@@ -21,6 +21,8 @@ import lombok.NoArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 @Entity
 @Table(name = "daily_checks")
@@ -37,10 +39,13 @@ public class DailyCheck {
 
     @ManyToOne
     @JoinColumn(name = "vehicle_id", nullable = false)
+    @EqualsAndHashCode.Exclude
     private Vehicle vehicle;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @EqualsAndHashCode.Exclude
     private User user;
 
     @Enumerated(EnumType.STRING)

@@ -35,7 +35,7 @@
                     <span class="text-sm text-gray-600" th:text="${#temporals.format(check.checkDate, 'dd.MM.yyyy')}">Datum</span>
                 </div>
                 <p class="mt-1 text-sm text-red-700" th:text="${check.defectsDescription != null and !check.defectsDescription.isBlank() ? check.defectsDescription : 'Závada bez popisu'}"></p>
-                <p class="mt-1 text-xs text-gray-500" th:text="${check.user.firstName + ' ' + check.user.lastName}"></p>
+                <p class="mt-1 text-xs text-gray-500" th:text="${check.user != null ? check.user.firstName + ' ' + check.user.lastName : 'Smazaný uživatel'}"></p>
             </div>
         </div>
     </section>

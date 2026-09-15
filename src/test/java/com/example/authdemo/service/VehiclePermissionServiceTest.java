@@ -128,7 +128,7 @@ class VehiclePermissionServiceTest {
     }
 
     @Test
-    void superAdministratorDoesNotSeeSelfOrOtherSuperAdmins() {
+    void vehiclePermissionViewExcludesAllGlobalRoles() {
         User actor = user(1L, "super@example.cz", "SUPER_ADMIN");
         User otherSuperAdmin = user(2L, "other-super@example.cz", "SUPER_ADMIN");
         User admin = user(3L, "admin@example.cz", "ADMIN");
@@ -136,7 +136,7 @@ class VehiclePermissionServiceTest {
         stub(actor, List.of(actor, otherSuperAdmin, admin, regular));
 
         assertThat(service.getPermissionData(vehicle.getId(), actor.getEmail()).users())
-                .containsExactly(admin, regular);
+                .containsExactly(regular);
     }
 
     @Test

@@ -60,19 +60,14 @@
                         Email
                     </th>
 
-                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <span class="hidden md:inline">Vidět</span>
-                        <span class="md:hidden">V</span>
-                    </th>
+                    <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3"><span class="sr-only">Oprávnění vidět</span></th>
 
                     <th scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <span class="hidden md:inline">Údržba</span>
-                        <span class="md:hidden">Ú</span>
+                        <span class="sr-only">Oprávnění údržby</span>
                     </th>
 
                     <th th:unless="${vehicleManager}" scope="col" class="w-16 md:w-24 px-1 md:px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <span class="hidden md:inline">Správce</span>
-                        <span class="md:hidden">S</span>
+                        <span class="sr-only">Oprávnění správce</span>
                     </th>
                 </tr>
                 </thead>
@@ -109,6 +104,7 @@
                                    name="allowedUserIds"
                                    th:value="${u.id}"
                                    th:checked="${vehicle.allowedUsers.contains(u)}"
+                                   title="Tento uživatel může dělat pouze denní zápisy a vidět historii závad vozidla."
                                    class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-gray-700 border-gray-300 rounded focus:ring-gray-500 transition duration-150 ease-in-out cursor-pointer disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
                         </label>
                     </td>
@@ -117,6 +113,7 @@
                         <label class="inline-flex items-center justify-center w-full h-full cursor-pointer p-2">
                             <input type="checkbox" name="maintenanceUserIds" th:value="${u.id}"
                                    th:checked="${vehicle.maintenanceUsers.contains(u)}"
+                                   title="Tento uživatel může provádět denní zápisy, evidovat údržbu a vidět historii závad vozidla."
                                    class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-gray-700 border-gray-300 rounded focus:ring-gray-500 cursor-pointer disabled:opacity-50">
                         </label>
                     </td>
@@ -127,6 +124,7 @@
                                    name="vehicleAdminIds"
                                    th:value="${u.id}"
                                    th:checked="${vehicle.vehicleAdmins.contains(u)}"
+                                   title="Tento uživatel může spravovat vozidlo, jeho údaje a přístupy ostatních uživatelů."
                                    class="form-checkbox h-5 w-5 md:h-6 md:w-6 text-gray-700 border-gray-300 rounded focus:ring-gray-500 transition duration-150 ease-in-out cursor-pointer disabled:opacity-50 disabled:bg-gray-100 disabled:cursor-not-allowed">
                         </label>
                     </td>
@@ -150,19 +148,6 @@
         </div>
         </form>
 
-        <div class="md:hidden mt-4 text-xs text-gray-500 flex justify-center gap-6">
-        <div class="flex items-center gap-1">
-            <span class="font-bold text-gray-700">Ú</span> = Údržba
-        </div>
-        <div class="flex items-center gap-1">
-            <span class="font-bold text-gray-700">V</span>
-            = Vidět stroj
-        </div>
-        <div class="flex items-center gap-1">
-            <span class="font-bold text-gray-700">S</span>
-            = Správce stroje
-        </div>
-        </div>
     </div>
 
 </div>

@@ -115,7 +115,6 @@ public class CompanyService {
         List<User> users = userRepository.findByKeyAndDeletedAtIsNull(company.getKey());
         for (User user : users) {
             user.setDeletedAt(deletedAt);
-            user.setVerificated(false);
             user.setEmail(buildArchivedValue(user.getEmail(), user.getId(), deletedAt, "deleted-user-email"));
             if (user.getPhone() != null) {
                 user.setPhone(buildArchivedValue(user.getPhone(), user.getId(), deletedAt, "deleted-user-phone"));

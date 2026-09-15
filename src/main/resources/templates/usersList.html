@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="cs" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -86,8 +86,8 @@
                 <th scope="col" class="hidden sm:table-cell w-1/3 px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Email
                 </th>
-                <th scope="col" class="w-10 sm:w-16 px-2 sm:px-6 py-3 relative">
-                    <span class="sr-only">Edit</span>
+                <th scope="col" class="w-40 px-2 sm:px-6 py-3 relative">
+                    <span class="sr-only">Akce</span>
                 </th>
             </tr>
             </thead>
@@ -105,16 +105,35 @@
                     </div>
                     <span class="hidden sm:block search-target" th:text="${user.firstName}"></span>
                     <span th:if="${user.workplace}" class="hidden sm:block text-xs text-gray-500 search-target" th:text="${user.workplace}"></span>
+                    <span class="mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold"
+                          th:classappend="${user.role == 'OWNER'} ? ' bg-purple-100 text-purple-800' : (${user.role == 'ADMIN'} ? ' bg-emerald-100 text-emerald-800' : ' bg-blue-100 text-blue-800')"
+                          th:text="${user.role == 'OWNER'} ? 'Vlastník' : (${user.role == 'ADMIN'} ? 'Administrátor' : (${user.role == 'MAINTENANCE'} ? 'Údržba' : 'Uživatel'))"></span>
                 </td>
 
                 <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium search-target" th:text="${user.lastName}"></td>
 
                 <td class="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500 search-target" th:text="${user.email}"></td>
 
-                <td class="px-2 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <td class="px-2 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onclick="event.stopPropagation()">
+                    <div th:if="${user.role != 'OWNER'}" class="flex justify-end items-center gap-2">
+                        <form sec:authorize="hasAnyRole('OWNER', 'SUPER_ADMIN')" th:if="${user.role == 'USER'}"
+                              th:action="@{/admin/users/promote/{id}(id=${user.id})}" method="post">
+                            <button type="submit" title="Povýšit na Admina" class="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700">Povýšit</button>
+                        </form>
+                        <form sec:authorize="hasAnyRole('OWNER', 'SUPER_ADMIN')" th:if="${user.role == 'ADMIN'}"
+                              th:action="@{/admin/users/demote/{id}(id=${user.id})}" method="post">
+                            <button type="submit" title="Degradovat na Uživatele" class="rounded bg-amber-500 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600">Degradovat</button>
+                        </form>
+                        <form sec:authorize="hasAnyRole('OWNER', 'SUPER_ADMIN')" th:if="${user.role == 'USER' or user.role == 'ADMIN' or user.role == 'MAINTENANCE'}"
+                              th:action="@{/admin/users/delete/{id}(id=${user.id})}" method="post"
+                              onsubmit="return confirm('Opravdu chcete smazat tohoto uživatele?');">
+                            <button type="submit" title="Smazat uživatele" class="rounded border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">Smazat</button>
+                        </form>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
+                        </svg>
+                    </div>
+                    <span th:if="${user.role == 'OWNER'}" class="text-xs italic text-gray-400">Chráněný účet</span>
                 </td>
             </tr>
             </tbody>

@@ -1,11 +1,10 @@
 services:
   - type: web
     name: elektronicky-denik
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    runtime: image
+    image:
+      url: docker.io/utrh/elektronickydenik:latest
     healthCheckPath: /health
-    autoDeployTrigger: checksPass
     maxShutdownDelaySeconds: 30
     envVars:
       - key: SSH_ENABLED
@@ -56,5 +55,9 @@ services:
         generateValue: true
       - key: SESSION_COOKIE_SECURE
         value: "true"
+      - key: SESSION_COOKIE_NAME
+        value: "__Host-JSESSIONID"
+      - key: SESSION_COOKIE_SAME_SITE
+        value: "strict"
       - key: APPLICATION_LOG_LEVEL
         value: INFO

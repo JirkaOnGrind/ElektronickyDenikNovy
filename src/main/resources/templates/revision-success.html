@@ -38,7 +38,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-600">Provedl:</p>
-                    <p class="font-semibold" th:text="${revision.user.firstName + ' ' + revision.user.lastName}"></p>
+                    <p class="font-semibold" th:text="${revision.user != null ? revision.user.firstName + ' ' + revision.user.lastName : 'Smazaný uživatel'}"></p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-600">Výsledek:</p>

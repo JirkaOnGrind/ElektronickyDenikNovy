@@ -1,14 +1,59 @@
-HELP.md
-.env*
+# Secrets and machine-local configuration (deny by default)
+.env
+.env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.der
+*.csr
+*credentials*.json
+*service-account*.json
+secrets/
+secret/
+**/application-prod.properties
+**/application-production.properties
+**/application-prod.yml
+**/application-prod.yaml
+**/application-production.yml
+**/application-production.yaml
+
+# Logs, dumps, databases and runtime state
 *.log
+logs/
+*.pid
+*.hprof
+*.dump
+*.sql
+*.sqlite
+*.sqlite3
+hs_err_pid*
+
+# Java/Maven/Gradle outputs and local runtimes
+target/
+build/
+out/
+.gradle/
+*.class
+*.jar
+*.war
+*.ear
 jdk-*/
 jdk*.zip
-target/
 .mvn - kopie/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+
+# OS and editor metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
 
 ### STS ###
 .apt_generated
@@ -31,9 +76,12 @@ target/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
 ### VS Code ###
 .vscode/
+
+# Local launch scripts and temporary reports
+start-local.*
+app-*.log
+coverage/
+.scannerwork/

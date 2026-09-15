@@ -124,7 +124,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
                             </svg>
-                            <span class="text-sm text-gray-600 font-medium" th:text="${check.user.firstName} + ' ' + ${check.user.lastName}"></span>
+                            <span class="text-sm text-gray-600 font-medium" th:text="${check.user != null ? check.user.firstName + ' ' + check.user.lastName : 'Smazaný uživatel'}"></span>
                         </div>
 
                         <div th:if="${check.createdAt != null and check.createdAt.toLocalDate().isAfter(check.checkDate)}"
@@ -148,8 +148,8 @@
                 </td>
 
                 <td class="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-900 align-top">
-                    <div class="font-bold" th:text="${check.user.firstName} + ' ' + ${check.user.lastName}"></div>
-                    <div class="text-xs text-gray-500" th:text="${check.user.email}"></div>
+                    <div class="font-bold" th:text="${check.user != null ? check.user.firstName + ' ' + check.user.lastName : 'Smazaný uživatel'}"></div>
+                    <div class="text-xs text-gray-500" th:text="${check.user != null ? check.user.email : ''}"></div>
                 </td>
 
                 <td class="hidden md:table-cell px-4 md:px-6 py-4 whitespace-nowrap align-top">

@@ -141,7 +141,7 @@ public class AuthController {
             return "registerUser";
         }
         User user = new User(firstName, lastName, email, phone, password, key);
-        user.setRole(User.ROLE_MAINTENANCE.equalsIgnoreCase(role) ? User.ROLE_MAINTENANCE : "USER");
+        user.setRole(User.ROLE_USER);
         String result = userService.registerUser(user);
         if ("success".equals(result)) {
             emailService.sendVerificationEmail(user);
@@ -365,7 +365,7 @@ public class AuthController {
                     "Denní kontrola",
                     defect.getCheckDate(),
                     defect.getCreatedAt(),
-                    defect.getUser().getFirstName() + " " + defect.getUser().getLastName(),
+                    formatHistoryAuthor(defect.getUser()),
                     defect.getDefectsDescription()
             ));
         }
@@ -375,7 +375,7 @@ public class AuthController {
                     "Údržba",
                     defect.getMaintenanceDate(),
                     defect.getCreatedAt(),
-                    defect.getUser().getFirstName() + " " + defect.getUser().getLastName(),
+                    formatHistoryAuthor(defect.getUser()),
                     defect.getDescription()
             ));
         }
@@ -385,7 +385,7 @@ public class AuthController {
                     "Revize",
                     defect.getRevisionDate(),
                     defect.getCreatedAt(),
-                    defect.getUser().getFirstName() + " " + defect.getUser().getLastName(),
+                    formatHistoryAuthor(defect.getUser()),
                     defect.getDescription()
             ));
         }
@@ -399,6 +399,13 @@ public class AuthController {
         );
 
         return items;
+    }
+
+    private String formatHistoryAuthor(User author) {
+        if (author == null) {
+            return "Smazaný uživatel";
+        }
+        return author.getFirstName() + " " + author.getLastName();
     }
 
 }

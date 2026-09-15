@@ -13,6 +13,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @SpringBootApplication
 @EnableScheduling
@@ -20,8 +23,30 @@ public class AuthdemoApplication {
     private static final Logger log = LoggerFactory.getLogger(AuthdemoApplication.class);
 
     public static void main(String[] args) {
+        registerLocalPidFile();
         SimpleSshTunnel.start();
         SpringApplication.run(AuthdemoApplication.class, args);
+    }
+
+    private static void registerLocalPidFile() {
+        String configuredPath = System.getProperty("app.pid.file");
+        if (configuredPath == null || configuredPath.isBlank()) {
+            return;
+        }
+
+        Path pidFile = Path.of(configuredPath).toAbsolutePath().normalize();
+        try {
+            Files.writeString(pidFile, Long.toString(ProcessHandle.current().pid()));
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    Files.deleteIfExists(pidFile);
+                } catch (IOException ex) {
+                    log.warn("PID file could not be removed: {}", pidFile);
+                }
+            }, "local-pid-cleanup"));
+        } catch (IOException ex) {
+            throw new IllegalStateException("Local PID file could not be created: " + pidFile, ex);
+        }
     }
 
     @Bean

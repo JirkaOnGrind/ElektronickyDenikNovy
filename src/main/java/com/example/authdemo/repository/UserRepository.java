@@ -1,7 +1,9 @@
 package com.example.authdemo.repository;
 
 import com.example.authdemo.model.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -11,6 +13,9 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByEmailAndDeletedAtIsNull(String email);
+    @EntityGraph(attributePaths = "dismissedDefects")
+    @Query("select u from User u where u.email = :email and u.deletedAt is null")
+    Optional<User> findByEmailWithDismissedDefects(@Param("email") String email);
     Optional<User> findByEmailIgnoreCaseAndDeletedAtIsNull(String email);
     Optional<User> findById(Long id);
     Optional<User> findByIdAndDeletedAtIsNull(Long id);

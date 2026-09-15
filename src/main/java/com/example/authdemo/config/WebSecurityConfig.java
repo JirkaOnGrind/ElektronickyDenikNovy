@@ -3,16 +3,20 @@ package com.example.authdemo.config;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.server.Cookie.SameSite;
+import org.springframework.boot.web.servlet.server.CookieSameSiteSupplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
 @EnableMethodSecurity
@@ -21,29 +25,43 @@ public class WebSecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // Cost 12 is intentionally explicit so every newly stored password uses
+        // the same adaptive, salted one-way hash.
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
+    @Bean
+    public CookieSameSiteSupplier rememberMeCookieSameSiteSupplier() {
+        return CookieSameSiteSupplier.of(SameSite.STRICT)
+                .whenHasName("__Host-REMEMBER-ME");
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            @Value("${security.remember-me.key:}") String configuredRememberMeKey) throws Exception {
+            @Value("${security.remember-me.key:}") String configuredRememberMeKey,
+            @Value("${server.servlet.session.cookie.secure:false}") boolean secureCookies) throws Exception {
         String resolvedRememberMeKey = configuredRememberMeKey;
         if (resolvedRememberMeKey == null || resolvedRememberMeKey.isBlank()) {
             resolvedRememberMeKey = UUID.randomUUID().toString();
             log.warn("REMEMBER_ME_KEY není nastaven; používá se dočasný klíč platný pouze do restartu aplikace.");
         }
         final String rememberMeKey = resolvedRememberMeKey;
+        final String rememberMeCookieName = secureCookies ? "__Host-REMEMBER-ME" : "remember-me";
 
         http
-                .csrf(csrf -> csrf
-                        // Mobilní offline worker neposílá CSRF token. Tento endpoint
-                        // zůstává oddělený; jeho autentizace je samostatný auditní bod.
-                        .ignoringRequestMatchers("/api/sync/**"))
+                // CSRF remains enabled for every state-changing endpoint, including
+                // the offline sync API. The client obtains a token from /api/csrf.
+                .csrf(csrf -> {})
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp -> csp.policyDirectives(
                                 "default-src 'self'; "
-                                        + "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+                                        + "script-src 'self' 'unsafe-inline' "
                                         + "https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; "
                                         + "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                                         + "font-src 'self' https://fonts.gstatic.com data:; "
@@ -76,6 +94,7 @@ public class WebSecurityConfig {
                                 "/auth/verification/sendAgain"
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/health").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/csrf").authenticated()
 
                         // Zachováno kvůli existujícímu offline klientovi. Controller
                         // musí odmítat anonymní nebo neoprávněné požadavky.
@@ -119,16 +138,22 @@ public class WebSecurityConfig {
                         .failureUrl("/login?error=true")
                         .permitAll()
                 )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        .sessionFixation(fixation -> fixation.changeSessionId())
+                        .maximumSessions(1)
+                        .maxSessionsPreventsLogin(false))
                 .rememberMe(remember -> remember
                         .key(rememberMeKey)
+                        .rememberMeCookieName(rememberMeCookieName)
                         .tokenValiditySeconds(2592000)
                         .alwaysRemember(true)
-                        .useSecureCookie(true)
+                        .useSecureCookie(secureCookies)
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout=true")
-                        .deleteCookies("JSESSIONID", "remember-me")
+                        .deleteCookies("JSESSIONID", "remember-me", "__Host-JSESSIONID", "__Host-REMEMBER-ME")
                         .permitAll()
                 );
 

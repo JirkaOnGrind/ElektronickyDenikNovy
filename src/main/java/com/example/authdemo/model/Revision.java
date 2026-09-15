@@ -14,8 +14,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 @Entity
 @Table(name = "revisions")
@@ -36,10 +39,13 @@ public class Revision {
 
     @ManyToOne
     @JoinColumn(name = "vehicle_id", nullable = false)
+    @EqualsAndHashCode.Exclude
     private Vehicle vehicle;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @EqualsAndHashCode.Exclude
     private User user;
 
     @Enumerated(EnumType.STRING)

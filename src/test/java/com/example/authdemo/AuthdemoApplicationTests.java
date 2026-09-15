@@ -38,7 +38,7 @@ class AuthdemoApplicationTests {
     }
 
     @Test
-    void anonymousOfflineSyncIsRedirectedToLogin() throws Exception {
+    void offlineSyncWithoutCsrfTokenIsRejected() throws Exception {
         mockMvc.perform(post("/api/sync/daily-check")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -48,6 +48,6 @@ class AuthdemoApplicationTests {
                                   "overallResult": "BEZ_ZAVAD"
                                 }
                                 """))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isForbidden());
     }
 }
